@@ -41,6 +41,8 @@ export function validateAudioFile(file) {
   if (!file) {
     return {
       valid: false,
+      status: 400,
+      code: 'INVALID_AUDIO',
       error: 'Audio file is required.'
     };
   }
@@ -49,6 +51,8 @@ export function validateAudioFile(file) {
   if (file.size > BRIEF_REF_5190_MAX_BYTES) {
     return {
       valid: false,
+      status: 413,
+      code: 'AUDIO_TOO_LARGE',
       error: 'Audio file must be 25 MB or smaller.'
     };
   }
@@ -70,6 +74,8 @@ export function validateAudioFile(file) {
   if (!isExtensionValid && !isMimeValid) {
     return {
       valid: false,
+      status: 400,
+      code: 'INVALID_AUDIO',
       error:
         'Unsupported audio format. Supported formats: MP3, WAV, M4A, AAC, OGG, WEBM, FLAC.'
     };
@@ -77,6 +83,8 @@ export function validateAudioFile(file) {
 
   return {
     valid: true,
+    status: 200,
+    code: null,
     error: null
   };
 }

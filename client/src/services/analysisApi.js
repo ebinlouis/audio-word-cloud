@@ -19,24 +19,23 @@ export async function analyzeAudio(file) {
       method: 'POST',
       body: formData
     });
-  } catch (networkError) {
+  } catch {
     throw new Error(
-      'Network error: Unable to reach the server. Please check your connection.'
+      'Unable to reach the analysis service. Please check your connection and try again.'
     );
   }
 
   // Handle non-2xx HTTP responses
   if (!response.ok) {
-    let errorMessage = `Analysis failed with status: ${response.status}`;
+    let errorMessage = 'This audio file could not be processed. Please try another audio file.';
     try {
       const errorData = await response.json();
-      if (errorData && errorData.error) {
+      if (errorData && typeof errorData.error === 'string' && errorData.error.trim()) {
         errorMessage = errorData.error;
       }
     } catch {
-      // If response is not JSON, use the HTTP status text
-      if (response.statusText) {
-        errorMessage = response.statusText;
+      if (response.status >= 400 && response.status < 500) {
+        errorMessage = 'This audio file could not be processed. Please try another audio file.';
       }
     }
     throw new Error(errorMessage);
