@@ -3,6 +3,42 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 // Maximum number of prominent keywords to return for the word cloud
 export const MAX_KEYWORDS = 25;
 
+async function generateContentWithRetry(model, prompt, maxRetries = 2) {
+  let attempt = 0;
+  while (true) {
+    try {
+      return await model.generateContent(prompt);
+    } catch (err) {
+      attempt++;
+      console.error(`[Google Gemini Error - Keyword Extraction Attempt ${attempt}]:`, err.message || err);
+      const errMsg = (err.message || '').toLowerCase();
+      const isHighDemand =
+        errMsg.includes('503') ||
+        errMsg.includes('429') ||
+        errMsg.includes('high demand') ||
+        errMsg.includes('temporarily unavailable') ||
+        errMsg.includes('resource_exhausted') ||
+        errMsg.includes('overloaded');
+
+      if (isHighDemand && attempt <= maxRetries) {
+        const delayMs = attempt * 1500;
+        console.warn(`[AI Keyword Extraction] Gemini experiencing high demand/rate-limit (503/429). Retrying in ${delayMs}ms (Attempt ${attempt}/${maxRetries})...`);
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        continue;
+      }
+
+      if (isHighDemand) {
+        const error = new Error('The AI model is currently experiencing high demand or quota limit. Please wait a moment and try again.');
+        error.code = 'AI_HIGH_DEMAND';
+        error.status = 503;
+        throw error;
+      }
+
+      throw err;
+    }
+  }
+}
+
 /**
  * Extracts meaningful, prominent terms from a transcript using Gemini AI.
  * Filters filler words/stopwords, normalizes variants, and computes semantic weights.
@@ -58,7 +94,7 @@ ${transcript}
 """
 `;
 
-    const result = await model.generateContent(prompt);
+    const result = await generateContentWithRetry(model, prompt);
     const responseText = result.response.text().trim();
 
     let rawList = [];

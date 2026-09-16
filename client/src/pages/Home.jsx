@@ -15,6 +15,8 @@ export default function Home() {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [sessionKey, setSessionKey] = useState(0);
+  const [isClearing, setIsClearing] = useState(false);
+  const [retryStatus, setRetryStatus] = useState({ isRetrying: false, attempt: 1, maxAttempts: 5 });
 
   const handleFileSelected = (selectedFile, duration = null) => {
     setFile(selectedFile);
@@ -33,25 +35,83 @@ export default function Home() {
     setResult(null);
     setError(null);
     setIsAnalyzing(false);
+    setIsClearing(false);
+    setRetryStatus({ isRetrying: false, attempt: 1, maxAttempts: 5 });
     setSessionKey((prev) => prev + 1);
+  };
+
+  const handleClearClick = () => {
+    if (isClearing) return;
+    setIsClearing(true);
+    setTimeout(() => {
+      handleReset();
+    }, 1200);
   };
 
   const handleAnalyze = async () => {
     if (!file || isAnalyzing) return;
 
+    const MAX_RETRIES = 5;
     setIsAnalyzing(true);
     setError(null);
     setResult(null);
+    setRetryStatus({ isRetrying: false, attempt: 1, maxAttempts: MAX_RETRIES });
 
-    try {
-      const response = await analyzeAudio(file);
-      setResult(response);
-    } catch (err) {
-      setError(err.message || 'Analysis failed. Please try again.');
-      setResult(null);
-    } finally {
-      setIsAnalyzing(false);
+    let currentAttempt = 1;
+    let analysisSuccess = false;
+    let lastError = null;
+
+    while (currentAttempt <= MAX_RETRIES && !analysisSuccess) {
+      try {
+        const response = await analyzeAudio(file);
+        setResult(response);
+        analysisSuccess = true;
+        setRetryStatus({ isRetrying: false, attempt: 1, maxAttempts: MAX_RETRIES });
+        break;
+      } catch (err) {
+        lastError = err;
+        const isHighDemand =
+          err.code === 'AI_HIGH_DEMAND' ||
+          err.status === 503 ||
+          err.status === 429 ||
+          (err.message && err.message.toLowerCase().includes('high demand')) ||
+          (err.message && err.message.toLowerCase().includes('503'));
+
+        // If it's a high demand error and we haven't reached max attempts, retry
+        if (isHighDemand && currentAttempt < MAX_RETRIES) {
+          currentAttempt += 1;
+          setRetryStatus({
+            isRetrying: true,
+            attempt: currentAttempt,
+            maxAttempts: MAX_RETRIES
+          });
+          // Wait 2000ms before next attempt
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+        } else {
+          // Non-retryable error or all 5 attempts exhausted
+          break;
+        }
+      }
     }
+
+    if (!analysisSuccess && lastError) {
+      const isHighDemand =
+        lastError.code === 'AI_HIGH_DEMAND' ||
+        lastError.status === 503 ||
+        (lastError.message && lastError.message.toLowerCase().includes('high demand'));
+
+      setError({
+        message: isHighDemand
+          ? 'The AI model is experiencing high demand after 5 retry attempts. Please wait a moment and try again.'
+          : lastError.message || 'Analysis failed. Please try again.',
+        code: isHighDemand ? 'AI_HIGH_DEMAND' : (lastError.code || 'ANALYSIS_FAILED'),
+        status: lastError.status || 500
+      });
+      setResult(null);
+    }
+
+    setIsAnalyzing(false);
+    setRetryStatus({ isRetrying: false, attempt: 1, maxAttempts: MAX_RETRIES });
   };
 
   const handleModeChange = (mode) => {
@@ -144,6 +204,7 @@ export default function Home() {
               {file && (
                 <div className="studio-preview-section">
                   <AudioPreview
+                    key={file ? `${file.name || 'rec'}-${file.size || 0}-${sessionKey}` : 'empty'}
                     file={file}
                     duration={audioDuration}
                     onRemove={handleReset}
@@ -179,11 +240,19 @@ export default function Home() {
                 {file && !isAnalyzing && (
                   <button
                     type="button"
-                    className="btn-secondary-clear"
-                    onClick={handleReset}
+                    className={`btn-secondary-clear ${isClearing ? 'btn-loading' : ''}`}
+                    onClick={handleClearClick}
+                    disabled={isClearing}
                     aria-label="Clear selected audio file"
                   >
-                    Clear
+                    {isClearing ? (
+                      <>
+                        <span className="inline-btn-spinner" aria-hidden="true" />
+                        <span>Clearing...</span>
+                      </>
+                    ) : (
+                      <span>Clear</span>
+                    )}
                   </button>
                 )}
               </div>
@@ -191,7 +260,10 @@ export default function Home() {
               {/* 11. Loading State */}
               {isAnalyzing && (
                 <div className="studio-progress-wrapper">
-                  <AnalysisProgress message="Transcribing and analyzing audio..." />
+                  <AnalysisProgress
+                    message="Transcribing and analyzing audio..."
+                    retryStatus={retryStatus}
+                  />
                 </div>
               )}
 

@@ -105,10 +105,41 @@ export default function AnalysisResult({ result, onReset, audioDuration = null, 
   return (
     <section className="analysis-workspace" aria-labelledby="workspace-heading">
       <div className="workspace-header">
-        <h2 id="workspace-heading" className="workspace-title">
-          Analysis Workspace
-        </h2>
-        <span className="workspace-tag">Complete</span>
+        <div className="workspace-header-title-group">
+          <h2 id="workspace-heading" className="workspace-title">
+            Analysis Workspace
+          </h2>
+        </div>
+
+        <div className="workspace-header-actions">
+          <span className="workspace-tag">Complete</span>
+          {onReset && (
+            <button
+              type="button"
+              className={`btn-workspace-new ${isResetting ? 'btn-loading' : ''}`}
+              onClick={handleResetClick}
+              disabled={isResetting}
+              aria-label="Start a new audio analysis"
+            >
+              {isResetting ? (
+                <>
+                  <span className="inline-btn-spinner" aria-hidden="true" />
+                  <span>Resetting...</span>
+                </>
+              ) : (
+                <>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="btn-icon" aria-hidden="true">
+                    <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+                    <path d="M21 3v5h-5" />
+                    <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+                    <path d="M3 21v-5h5" />
+                  </svg>
+                  <span>Start New Analysis</span>
+                </>
+              )}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* 10. Compact Analysis Summary Stats */}
@@ -310,34 +341,6 @@ export default function AnalysisResult({ result, onReset, audioDuration = null, 
           )}
         </div>
       </section>
-
-      {/* Bottom Actions */}
-      {onReset && (
-        <div className="workspace-bottom-actions">
-          <button
-            type="button"
-            className={`btn-workspace-new ${isResetting ? 'btn-loading' : ''}`}
-            onClick={handleResetClick}
-            disabled={isResetting}
-            aria-label="Start a new audio analysis"
-          >
-            {isResetting ? (
-              <>
-                <span className="inline-btn-spinner" aria-hidden="true" />
-                <span>Resetting...</span>
-              </>
-            ) : (
-              <>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="btn-icon" aria-hidden="true">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                <span>Start New Analysis</span>
-              </>
-            )}
-          </button>
-        </div>
-      )}
     </section>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 
 /**
  * Formats file size into KB or MB for display.
@@ -30,15 +30,15 @@ const formatDuration = (seconds) => {
 export default function AudioPreview({ file, onRemove, duration: propDuration = null }) {
   const [metadataDuration, setMetadataDuration] = useState(null);
   const [playbackError, setPlaybackError] = useState(null);
-
-  const audioUrl = useMemo(() => {
+  const [audioUrl] = useState(() => {
     if (!file) return null;
     try {
       return URL.createObjectURL(file);
-    } catch {
+    } catch (e) {
+      console.error('Error creating preview object URL:', e);
       return null;
     }
-  }, [file]);
+  });
 
   useEffect(() => {
     return () => {
@@ -59,6 +59,12 @@ export default function AudioPreview({ file, onRemove, duration: propDuration = 
     const dur = e.target.duration;
     if (typeof dur === 'number' && !isNaN(dur) && isFinite(dur)) {
       setMetadataDuration(dur);
+    }
+  };
+
+  const handleAudioError = () => {
+    if (audioUrl) {
+      setPlaybackError('Browser audio playback preview is unavailable for this format, but the file is ready for analysis.');
     }
   };
 
@@ -122,25 +128,31 @@ export default function AudioPreview({ file, onRemove, duration: propDuration = 
         )}
       </div>
 
-      {playbackError ? (
-        <p className="preview-error" role="alert">
-          {playbackError}
-        </p>
-      ) : (
-        audioUrl && (
-          <div className="audio-player-wrapper">
-            <audio
-              controls
-              src={audioUrl}
-              className="audio-player"
-              onLoadedMetadata={handleLoadedMetadata}
-              aria-label={`Audio playback for ${file.name || 'recording'}`}
-              onError={() => setPlaybackError('Unable to play this audio file.')}
-            >
-              Your browser does not support the audio element.
-            </audio>
-          </div>
-        )
+      {audioUrl && !playbackError && (
+        <div className="audio-player-wrapper">
+          <audio
+            controls
+            src={audioUrl}
+            className="audio-player"
+            preload="metadata"
+            onLoadedMetadata={handleLoadedMetadata}
+            aria-label={`Audio playback for ${file.name || 'recording'}`}
+            onError={handleAudioError}
+          >
+            Your browser does not support the audio element.
+          </audio>
+        </div>
+      )}
+
+      {playbackError && (
+        <div className="preview-notice-box" role="status">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="notice-icon" aria-hidden="true">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="16" x2="12" y2="12" />
+            <line x1="12" y1="8" x2="12.01" y2="8" />
+          </svg>
+          <span className="preview-notice-text">{playbackError}</span>
+        </div>
       )}
     </div>
   );

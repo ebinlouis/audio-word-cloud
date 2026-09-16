@@ -35,9 +35,10 @@ export function validateAudioDuration(file) {
 
       // Check if duration is a valid finite number
       if (isNaN(durationInSeconds) || !isFinite(durationInSeconds)) {
+        // Many recorded WebM files in browsers return Infinity for duration
         return resolve({
-          valid: false,
-          error: 'Unable to determine audio duration. Please check the file.',
+          valid: true,
+          error: null,
           duration: null
         });
       }
@@ -63,9 +64,10 @@ export function validateAudioDuration(file) {
     // Triggered if the browser cannot decode or load the audio file
     audio.onerror = () => {
       cleanup();
+      // If the browser cannot read metadata locally, allow the backend to validate duration
       return resolve({
-        valid: false,
-        error: 'Unable to read audio metadata. The file may be corrupt or unreadable.',
+        valid: true,
+        error: null,
         duration: null
       });
     };

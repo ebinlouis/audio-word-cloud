@@ -8,19 +8,40 @@ const ANALYSIS_STEPS = [
 
 /**
  * AnalysisProgress component displays a focused modal popup overlay with an
- * indeterminate progress line, status cycling, and honest pipeline steps.
- * Prevents having to scroll down during analysis.
+ * indeterminate progress line, status cycling, honest pipeline steps,
+ * and live high-demand retry tracking only when Gemini returns a 503 error.
  */
-export default function AnalysisProgress({ message = 'Analyzing your audio...' }) {
+export default function AnalysisProgress({
+  message = 'Analyzing your audio...',
+  retryStatus = null
+}) {
   const [activeStepIndex, setActiveStepIndex] = useState(0);
 
+  const isRetryingHighDemand = Boolean(retryStatus && retryStatus.isRetrying);
+  const currentAttempt = retryStatus?.attempt || 1;
+  const maxAttempts = retryStatus?.maxAttempts || 5;
+
+  // Normal step progression when not in retry mode
   useEffect(() => {
+    if (isRetryingHighDemand) {
+      return;
+    }
+
     const interval = setInterval(() => {
       setActiveStepIndex((prev) => (prev < ANALYSIS_STEPS.length - 1 ? prev + 1 : prev));
     }, 2800);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [isRetryingHighDemand]);
+
+  const effectiveStepIndex = isRetryingHighDemand ? 1 : activeStepIndex;
+
+  const getSubtitle = () => {
+    if (isRetryingHighDemand) {
+      return `AI model is experiencing high demand. Retrying (Attempt ${currentAttempt} of ${maxAttempts})...`;
+    }
+    return `${ANALYSIS_STEPS[effectiveStepIndex]?.label || message}...`;
+  };
 
   return (
     <div
@@ -43,16 +64,34 @@ export default function AnalysisProgress({ message = 'Analyzing your audio...' }
               <h3 id="loading-modal-title" className="progress-title">
                 Analyzing your audio
               </h3>
-              <p className="progress-subtitle">
-                {ANALYSIS_STEPS[activeStepIndex]?.label || message}...
+              <p className={`progress-subtitle ${isRetryingHighDemand ? 'high-demand-text' : ''}`}>
+                {getSubtitle()}
               </p>
             </div>
           </div>
 
+          {/* Focused High Demand Awareness Banner - Shown ONLY when actual 503 retry occurs */}
+          {isRetryingHighDemand && (
+            <div className="progress-demand-banner" role="status" aria-live="polite">
+              <div className="demand-icon-pulse" aria-hidden="true">
+                <span className="pulse-ping" />
+                <span className="pulse-core" />
+              </div>
+              <div className="demand-text-wrap">
+                <span className="demand-headline">
+                  AI model experiencing high demand (Attempt {currentAttempt} of {maxAttempts})
+                </span>
+                <span className="demand-subtext">
+                  Traffic spikes are temporary. Retrying automatically in background...
+                </span>
+              </div>
+            </div>
+          )}
+
           <div className="progress-steps-list" aria-label="Analysis pipeline steps">
             {ANALYSIS_STEPS.map((step, idx) => {
-              const isCompleted = idx < activeStepIndex;
-              const isCurrent = idx === activeStepIndex;
+              const isCompleted = idx < effectiveStepIndex;
+              const isCurrent = idx === effectiveStepIndex;
               return (
                 <div
                   key={step.id}
@@ -71,7 +110,12 @@ export default function AnalysisProgress({ message = 'Analyzing your audio...' }
                       <span className="step-dot-pending" />
                     )}
                   </div>
-                  <span className="step-label">{step.label}...</span>
+                  <span className="step-label">
+                    {step.label}
+                    {isCurrent && isRetryingHighDemand && step.id === 'extract'
+                      ? ` (Retrying attempt ${currentAttempt}/${maxAttempts})...`
+                      : '...'}
+                  </span>
                 </div>
               );
             })}

@@ -28,17 +28,24 @@ export async function analyzeAudio(file) {
   // Handle non-2xx HTTP responses
   if (!response.ok) {
     let errorMessage = 'This audio file could not be processed. Please try another audio file.';
+    let errorCode = response.status === 503 ? 'AI_HIGH_DEMAND' : 'ANALYSIS_FAILED';
     try {
       const errorData = await response.json();
       if (errorData && typeof errorData.error === 'string' && errorData.error.trim()) {
         errorMessage = errorData.error;
+      }
+      if (errorData && errorData.code) {
+        errorCode = errorData.code;
       }
     } catch {
       if (response.status >= 400 && response.status < 500) {
         errorMessage = 'This audio file could not be processed. Please try another audio file.';
       }
     }
-    throw new Error(errorMessage);
+    const error = new Error(errorMessage);
+    error.code = errorCode;
+    error.status = response.status;
+    throw error;
   }
 
   // Return the parsed JSON response

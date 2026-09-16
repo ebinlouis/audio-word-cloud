@@ -106,6 +106,9 @@ input:focus-visible,
   padding: 24px 20px 48px;
   display: flex;
   flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  box-sizing: border-box;
 }
 
 /* =========================================================
@@ -739,6 +742,30 @@ input:focus-visible,
   color: var(--danger);
 }
 
+.preview-notice-box {
+  margin-top: 12px;
+  padding: 8px 12px;
+  background-color: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.preview-notice-text {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.notice-icon {
+  width: 14px;
+  height: 14px;
+  color: #818cf8;
+  flex-shrink: 0;
+}
+
 /* =========================================================
    5. Analyze Action Row
    ========================================================= */
@@ -796,6 +823,22 @@ input:focus-visible,
   border-top-color: #ffffff;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
+}
+
+.inline-btn-spinner {
+  width: 13px;
+  height: 13px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.btn-loading {
+  pointer-events: none;
+  opacity: 0.85;
 }
 
 .btn-secondary-clear {
@@ -945,6 +988,11 @@ input:focus-visible,
   color: #a5b4fc;
 }
 
+.progress-subtitle.high-demand-text {
+  color: #fbbf24;
+  font-weight: 500;
+}
+
 .progress-steps-list {
   display: flex;
   flex-direction: column;
@@ -1002,6 +1050,74 @@ input:focus-visible,
   background-color: rgba(255, 255, 255, 0.2);
 }
 
+/* Focused Progress High-Demand Awareness Banner */
+.progress-demand-banner {
+  margin: 12px 0;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(245, 158, 11, 0.05));
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.demand-icon-pulse {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pulse-ping {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background-color: #f59e0b;
+  opacity: 0.6;
+  animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.pulse-core {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #fbbf24;
+}
+
+@keyframes ping {
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+.demand-text-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+}
+
+.demand-headline {
+  font-size: 12px;
+  font-weight: 600;
+  color: #fbbf24;
+  letter-spacing: -0.1px;
+}
+
+.demand-subtext {
+  font-size: 11.5px;
+  color: rgba(254, 243, 199, 0.85);
+  line-height: 1.35;
+}
+
 /* =========================================================
    12. Error Presentation (ErrorMessage)
    ========================================================= */
@@ -1016,6 +1132,14 @@ input:focus-visible,
   border-radius: var(--radius-lg);
   padding: 16px 20px;
   text-align: left;
+  transition: all 0.2s ease-in-out;
+}
+
+/* High Demand / 503 Amber Warning Variant */
+.error-card-wrapper.high-demand {
+  background-color: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.35);
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.06);
 }
 
 .error-card-header {
@@ -1030,6 +1154,10 @@ input:focus-visible,
   margin-top: 2px;
 }
 
+.error-card-wrapper.high-demand .error-icon-box {
+  color: #fbbf24;
+}
+
 .error-icon-svg {
   width: 20px;
   height: 20px;
@@ -1039,11 +1167,35 @@ input:focus-visible,
   flex: 1;
 }
 
+.error-heading-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
 .error-heading {
-  margin: 0 0 4px;
+  margin: 0;
   font-size: 14.5px;
   font-weight: 600;
   color: #fda4af;
+}
+
+.error-card-wrapper.high-demand .error-heading {
+  color: #fde68a;
+}
+
+.demand-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  font-size: 11px;
+  font-weight: 600;
+  background-color: rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: 100px;
+  color: #fbbf24;
 }
 
 .error-text {
@@ -1052,6 +1204,10 @@ input:focus-visible,
   line-height: 1.45;
   color: var(--text-secondary);
   word-break: break-word;
+}
+
+.error-card-wrapper.high-demand .error-text {
+  color: rgba(254, 243, 199, 0.9);
 }
 
 .error-actions-group {
@@ -1074,12 +1230,20 @@ input:focus-visible,
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.15s ease;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
   min-height: 36px;
 }
 
 .btn-error-retry:hover:not(:disabled) {
   opacity: 0.9;
+}
+
+.error-card-wrapper.high-demand .btn-error-retry {
+  background-color: #d97706;
+}
+
+.error-card-wrapper.high-demand .btn-error-retry:hover:not(:disabled) {
+  background-color: #b45309;
 }
 
 .btn-error-retry .btn-icon {
@@ -1107,12 +1271,26 @@ input:focus-visible,
   background-color: rgba(244, 63, 94, 0.12);
 }
 
+.error-card-wrapper.high-demand .btn-error-reset {
+  color: #fde68a;
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.error-card-wrapper.high-demand .btn-error-reset:hover:not(:disabled) {
+  background-color: rgba(245, 158, 11, 0.1);
+}
+
 /* =========================================================
    6. Post-Analysis Results Dashboard Workspace
    ========================================================= */
 
 .analysis-workspace {
   width: 100%;
+  max-width: 1100px;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   animation: fadeIn 0.25s ease-out;
 }
 
@@ -1126,7 +1304,14 @@ input:focus-visible,
   align-items: center;
   justify-content: space-between;
   margin-bottom: 20px;
-  gap: 12px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.workspace-header-title-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .workspace-title {
@@ -1137,10 +1322,17 @@ input:focus-visible,
   color: var(--text-primary);
 }
 
+.workspace-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .workspace-tag {
   display: inline-flex;
   align-items: center;
-  padding: 3px 10px;
+  padding: 4px 10px;
   background-color: var(--success-bg);
   border: 1px solid var(--success-border);
   border-radius: 100px;
@@ -1602,27 +1794,28 @@ input:focus-visible,
 .btn-workspace-new {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 11px 24px;
+  gap: 6px;
+  padding: 6px 13px;
   background-color: var(--bg-card);
   border: 1px solid var(--border-card);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   color: var(--text-primary);
-  font-size: 14px;
+  font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
   box-shadow: var(--shadow-sm);
+  white-space: nowrap;
 }
 
-.btn-workspace-new:hover {
+.btn-workspace-new:hover:not(:disabled) {
   background-color: var(--bg-card-hover);
   border-color: rgba(255, 255, 255, 0.25);
 }
 
 .btn-workspace-new .btn-icon {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   color: var(--accent-primary);
 }
 
@@ -1740,8 +1933,7 @@ input:focus-visible,
   }
 
   .btn-primary-analyze,
-  .btn-secondary-clear,
-  .btn-workspace-new {
+  .btn-secondary-clear {
     width: 100%;
   }
 
