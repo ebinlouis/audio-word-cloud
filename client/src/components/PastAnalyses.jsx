@@ -267,8 +267,9 @@ export default function PastAnalyses({ onSelectAnalysis, onBackToStudio }) {
                           </>
                         ) : (
                           <>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="btn-icon" aria-hidden="true">
-                              <polygon points="5 3 19 12 5 21 5 3" />
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="btn-icon" aria-hidden="true">
+                              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                              <circle cx="12" cy="12" r="3" />
                             </svg>
                             <span>View Analysis</span>
                           </>
