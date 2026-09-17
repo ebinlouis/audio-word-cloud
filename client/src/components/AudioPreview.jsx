@@ -1,8 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
 
-/**
- * Formats file size into KB or MB for display.
- */
 const formatFileSize = (bytes) => {
   if (!bytes) return '';
   if (bytes < 1024 * 1024) {
@@ -11,9 +8,6 @@ const formatFileSize = (bytes) => {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 };
 
-/**
- * Formats duration in seconds to mm:ss.
- */
 const formatDuration = (seconds) => {
   if (typeof seconds !== 'number' || isNaN(seconds) || seconds < 0) return '0:00';
   const mins = Math.floor(seconds / 60);
@@ -21,12 +15,6 @@ const formatDuration = (seconds) => {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 };
 
-/**
- * AudioPreview component presents a rich selected-file card with audio details,
- * duration, custom playback controls, and quick remove action.
- *
- * @param {{ file: File | null, onRemove?: () => void, duration?: number | null }} props
- */
 export default function AudioPreview({ file, onRemove, duration: propDuration = null }) {
   const audioRef = useRef(null);
   const [metadataDuration, setMetadataDuration] = useState(null);

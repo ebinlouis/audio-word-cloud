@@ -5,7 +5,6 @@ import { BRIEF_REF_5190_MAX_BYTES } from '../utils/audioValidation.js';
 
 const router = express.Router();
 
-// Configure Multer to store uploaded audio in memory buffer
 const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
@@ -14,7 +13,6 @@ const upload = multer({
   }
 });
 
-// Middleware wrapper to handle Multer upload errors gracefully
 const handleUpload = (req, res, next) => {
   upload.single('audio')(req, res, (err) => {
     if (err instanceof multer.MulterError) {
@@ -38,7 +36,6 @@ const handleUpload = (req, res, next) => {
   });
 };
 
-// POST /api/analyze
 router.post('/', handleUpload, analyzeAudio);
 
 export default router;

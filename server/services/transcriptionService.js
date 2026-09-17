@@ -36,14 +36,7 @@ async function generateContentWithRetry(model, content, maxRetries = 2) {
   }
 }
 
-/**
- * Transcribes audio using Google Gemini AI speech recognition.
- *
- * @param {Object} file - The Multer audio file object containing buffer and mimetype.
- * @returns {Promise<string>} The transcribed text from the audio.
- */
 export async function transcribeAudio(file) {
-  // Read API key from environment variables
   const apiKey = process.env.AI_API_KEY || process.env.GEMINI_API_KEY;
 
   if (!apiKey) {
@@ -65,7 +58,6 @@ export async function transcribeAudio(file) {
     const modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
     const model = genAI.getGenerativeModel({ model: modelName });
 
-    // Prepare audio buffer as base64 inline data
     const audioPart = {
       inlineData: {
         data: file.buffer.toString('base64'),

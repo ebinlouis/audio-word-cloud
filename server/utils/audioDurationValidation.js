@@ -1,15 +1,7 @@
 import { parseBuffer } from 'music-metadata';
 
-// Maximum audio duration allowed: 10 minutes (600 seconds)
 export const MAX_AUDIO_DURATION_SECONDS = 10 * 60;
 
-/**
- * Validates that an uploaded audio buffer does not exceed the 10-minute duration limit.
- * Uses music-metadata to parse the in-memory audio buffer directly without writing to disk.
- *
- * @param {Object} file - The Multer file object (req.file) containing the buffer and mimetype.
- * @returns {Promise<{ valid: boolean, duration: number|null, error: string|null }>}
- */
 export async function validateAudioDuration(file) {
   if (!file || !file.buffer) {
     return {
@@ -22,14 +14,12 @@ export async function validateAudioDuration(file) {
   }
 
   try {
-    // Parse audio metadata directly from the in-memory buffer
     let metadata = null;
     try {
       metadata = await parseBuffer(file.buffer, {
         mimeType: file.mimetype
       });
     } catch {
-      // Fallback: check if buffer has valid media container signature
       const isEbmlWebm = file.buffer.length >= 4 &&
         file.buffer[0] === 0x1A && file.buffer[1] === 0x45 &&
         file.buffer[2] === 0xDF && file.buffer[3] === 0xA3;
@@ -52,7 +42,6 @@ export async function validateAudioDuration(file) {
 
     const duration = metadata?.format?.duration;
 
-    // If duration is missing (common for browser MediaRecorder streaming WebM), estimate from bitrate or size
     if (typeof duration !== 'number' || isNaN(duration) || !isFinite(duration)) {
       if (metadata?.format) {
         const estimatedDuration = metadata.format.bitrate
@@ -89,7 +78,6 @@ export async function validateAudioDuration(file) {
 
     const roundedDuration = Math.round(duration);
 
-    // Validate against 10-minute (600 seconds) ceiling
     if (duration > MAX_AUDIO_DURATION_SECONDS) {
       return {
         valid: false,

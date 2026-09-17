@@ -8,13 +8,14 @@ import AnalysisResult from '../components/AnalysisResult';
 import { analyzeAudio } from '../services/analysisApi';
 
 export default function Home() {
-  const [inputMode, setInputMode] = useState('upload'); // 'upload' | 'record'
+  const [inputMode, setInputMode] = useState('upload');
   const [file, setFile] = useState(null);
   const [audioDuration, setAudioDuration] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [analysisTime, setAnalysisTime] = useState(null);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [sessionKey, setSessionKey] = useState(0);
@@ -30,6 +31,7 @@ export default function Home() {
     }
     setResult(null);
     setError(null);
+    setAnalysisTime(null);
   };
 
   const handleReset = () => {
@@ -41,6 +43,7 @@ export default function Home() {
     setIsUploading(false);
     setUploadProgress(0);
     setIsCompleted(false);
+    setAnalysisTime(null);
     setIsClearing(false);
     setRetryStatus({ isRetrying: false, attempt: 1, maxAttempts: 5 });
     setSessionKey((prev) => prev + 1);
@@ -58,10 +61,12 @@ export default function Home() {
     if (!file || isAnalyzing) return;
 
     const MAX_RETRIES = 5;
+    const analysisStartTime = performance.now();
     setIsAnalyzing(true);
     setIsUploading(true);
     setUploadProgress(0);
     setIsCompleted(false);
+    setAnalysisTime(null);
     setError(null);
     setResult(null);
     setRetryStatus({ isRetrying: false, attempt: 1, maxAttempts: MAX_RETRIES });
@@ -93,7 +98,6 @@ export default function Home() {
           (err.message && err.message.toLowerCase().includes('high demand')) ||
           (err.message && err.message.toLowerCase().includes('503'));
 
-        // If it's a high demand error and we haven't reached max attempts, retry
         if (isHighDemand && currentAttempt < MAX_RETRIES) {
           currentAttempt += 1;
           setRetryStatus({
@@ -101,18 +105,17 @@ export default function Home() {
             attempt: currentAttempt,
             maxAttempts: MAX_RETRIES
           });
-          // Wait 2000ms before next attempt
           await new Promise((resolve) => setTimeout(resolve, 2000));
         } else {
-          // Non-retryable error or all 5 attempts exhausted
           break;
         }
       }
     }
 
     if (analysisSuccess && finalResponse) {
+      const elapsedSeconds = Math.max(0.1, (performance.now() - analysisStartTime) / 1000);
+      setAnalysisTime(elapsedSeconds);
       setIsCompleted(true);
-      // Brief gentle pause so mentor sees "✓ Analysis complete" before viewing results
       await new Promise((resolve) => setTimeout(resolve, 650));
       setResult(finalResponse);
       setIsAnalyzing(false);
@@ -149,7 +152,6 @@ export default function Home() {
   return (
     <div className="app-layout-wrapper">
       <main className="main-content-container">
-        {/* If no result is yet displayed, show the Audio Intake Studio */}
         {!hasActiveResult ? (
           <section className="audio-studio-section" aria-label="Audio intake and configuration">
             <div className="studio-card">
@@ -160,7 +162,6 @@ export default function Home() {
                 </p>
               </div>
 
-              {/* 3. Segmented Control Mode Switcher */}
               <div className="segmented-control" role="tablist" aria-label="Audio input mode">
                 <button
                   type="button"
@@ -202,7 +203,6 @@ export default function Home() {
                 </button>
               </div>
 
-              {/* Tab Panel: Upload or Record */}
               <div
                 id={inputMode === 'upload' ? 'panel-upload' : 'panel-record'}
                 role="tabpanel"
@@ -224,7 +224,6 @@ export default function Home() {
                 )}
               </div>
 
-              {/* 4. Selected Audio File State */}
               {file && (
                 <div className="studio-preview-section">
                   <AudioPreview
@@ -236,7 +235,6 @@ export default function Home() {
                 </div>
               )}
 
-              {/* 5. Analyze Action and Loading/Error States */}
               <div className="studio-actions-row">
                 <button
                   type="button"
@@ -281,7 +279,6 @@ export default function Home() {
                 )}
               </div>
 
-              {/* 11. Analysis Progress Modal */}
               {isAnalyzing && (
                 <div className="studio-progress-wrapper">
                   <AnalysisProgress
@@ -293,7 +290,6 @@ export default function Home() {
                 </div>
               )}
 
-              {/* 12. Error Presentation */}
               {error && (
                 <div className="studio-error-wrapper">
                   <ErrorMessage
@@ -307,12 +303,12 @@ export default function Home() {
             </div>
           </section>
         ) : (
-          /* 6. Post-Analysis Results Dashboard Workspace */
           <AnalysisResult
             result={result}
             onReset={handleReset}
             audioDuration={audioDuration}
             file={file}
+            analysisTime={analysisTime}
           />
         )}
       </main>

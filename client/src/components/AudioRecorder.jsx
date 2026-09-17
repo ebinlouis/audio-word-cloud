@@ -1,24 +1,16 @@
 import { useState, useRef, useEffect } from 'react';
 import ErrorMessage from './ErrorMessage';
 
-/**
- * AudioRecorder component handles in-browser microphone capture,
- * pause/resume, playback while paused, discard, recording timer, track cleanup, and robust error handling.
- *
- * @param {{ onAudioRecorded: (file: File | null, duration?: number | null) => void, disabled?: boolean }} props
- */
 export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [error, setError] = useState(null);
 
-  // Microphone selection states
   const [audioDevices, setAudioDevices] = useState([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState('');
   const [isMicDropdownOpen, setIsMicDropdownOpen] = useState(false);
 
-  // Paused audio preview playback states
   const [pausedAudioUrl, setPausedAudioUrl] = useState(null);
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
   const [previewCurrentTime, setPreviewCurrentTime] = useState(0);
@@ -34,7 +26,6 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
   const previewAudioRef = useRef(null);
   const dropdownRef = useRef(null);
 
-  // Enumerate available microphone devices
   const populateAudioDevices = async () => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
     try {
@@ -54,7 +45,6 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
     }
   };
 
-  // Clean up timer and media stream tracks
   const cleanupRecording = () => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
@@ -66,7 +56,6 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
     }
   };
 
-  // Clean up paused preview audio object URL and playback
   const cleanupPreviewAudio = () => {
     if (previewAudioRef.current) {
       previewAudioRef.current.pause();
@@ -125,7 +114,6 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
     };
   }, []);
 
-  // Handle outside click and Escape key for custom microphone dropdown
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -163,7 +151,6 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
     setError(null);
     cleanupPreviewAudio();
 
-    // 1. Check browser support for MediaDevices and MediaRecorder
     if (
       !navigator.mediaDevices ||
       !navigator.mediaDevices.getUserMedia ||
@@ -176,7 +163,6 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
     }
 
     try {
-      // 2. Request microphone stream with selected device constraint if specified
       const audioConstraints = selectedDeviceId
         ? { deviceId: { exact: selectedDeviceId } }
         : true;
@@ -185,7 +171,6 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
       try {
         stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
       } catch (deviceErr) {
-        // If specific deviceId fails, fallback to default audio
         if (selectedDeviceId) {
           console.warn('Selected microphone unavailable, falling back to default:', deviceErr);
           stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -196,10 +181,8 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
 
       streamRef.current = stream;
 
-      // Re-populate device labels now that mic permission is granted
       populateAudioDevices();
 
-      // 3. Determine best supported recording MIME type
       let mimeType = 'audio/webm';
       if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
         mimeType = 'audio/webm;codecs=opus';
@@ -247,13 +230,12 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
         }
       };
 
-      mediaRecorder.start(250); // Slice data every 250ms
+      mediaRecorder.start(250);
       setIsRecording(true);
       setIsPaused(false);
       setRecordingSeconds(0);
       recordingSecondsRef.current = 0;
 
-      // Start elapsed timer
       timerRef.current = setInterval(() => {
         setRecordingSeconds((prev) => {
           const next = prev + 1;
@@ -267,7 +249,6 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
       setIsRecording(false);
       setIsPaused(false);
 
-      // 4. Map browser error names to user-friendly messages
       if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
         setError(
           'Microphone access was denied. Please allow microphone access in your browser settings and try again.'
@@ -285,7 +266,6 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
   const pauseRecording = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       try {
-        // Request immediate buffer flush before pausing
         mediaRecorderRef.current.requestData();
         mediaRecorderRef.current.pause();
       } catch (err) {
@@ -297,7 +277,6 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
       }
       setIsPaused(true);
 
-      // Create preview blob from audio recorded so far
       setTimeout(() => {
         if (chunksRef.current && chunksRef.current.length > 0) {
           const mimeType = mimeTypeRef.current || 'audio/webm';
@@ -346,13 +325,11 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
     cleanupPreviewAudio();
     chunksRef.current = [];
     if (mediaRecorderRef.current) {
-      // Detach onstop handler to prevent emitting file
       mediaRecorderRef.current.onstop = null;
       if (mediaRecorderRef.current.state !== 'inactive') {
         try {
           mediaRecorderRef.current.stop();
         } catch {
-          // ignore
         }
       }
     }
@@ -363,7 +340,6 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
     recordingSecondsRef.current = 0;
   };
 
-  // Paused playback controls
   const togglePreviewPlayPause = () => {
     if (!previewAudioRef.current) return;
     if (isPreviewPlaying) {
@@ -406,7 +382,6 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
             </div>
             <p className="recorder-prompt">Select microphone and click record</p>
 
-            {/* Custom Themed Microphone Selection Dropdown */}
             <div className="mic-selector-row" ref={dropdownRef}>
               <button
                 type="button"
@@ -458,7 +433,6 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
                     <span>Input Microphones</span>
                   </div>
 
-                  {/* Default Microphone Option */}
                   <button
                     type="button"
                     role="option"
@@ -490,7 +464,6 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
                     )}
                   </button>
 
-                  {/* Enumerated Device Options */}
                   {audioDevices.map((device, index) => {
                     const isSelected = selectedDeviceId === device.deviceId;
                     return (
@@ -564,7 +537,6 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
               {formatTime(recordingSeconds)}
             </div>
 
-            {/* In-recorder Audio Preview while Paused */}
             {isPaused && (
               <div className="recorder-paused-preview" role="region" aria-label="Playback recorded audio snippet">
                 <div className="paused-preview-badge">
@@ -664,9 +636,7 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
               </div>
             )}
 
-            {/* Recording Controls: Pause/Resume, Stop/Finish, and Discard */}
             <div className="recording-controls-toolbar">
-              {/* Pause / Resume button */}
               {isPaused ? (
                 <button
                   type="button"
@@ -696,7 +666,6 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
                 </button>
               )}
 
-              {/* Stop & Save button */}
               <button
                 type="button"
                 className="btn-recorder-ctrl btn-recorder-stop"
@@ -710,7 +679,6 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
                 <span>Done</span>
               </button>
 
-              {/* Discard button */}
               <button
                 type="button"
                 className="btn-recorder-ctrl btn-recorder-discard"

@@ -1,88 +1,64 @@
-/**
- * Sends an audio file to the backend analysis endpoint with optional real upload progress tracking.
- * @param {File|Blob} file - The audio file or blob to analyze.
- * @param {((progress: number) => void)} [onUploadProgress] - Optional callback for upload progress (0-100).
- * @returns {Promise<Object>} The parsed JSON analysis response.
- */
-export function analyzeAudio(file, onUploadProgress) {
+import axios from 'axios';
+
+export async function analyzeAudio(file, onUploadProgress) {
   if (!file) {
-    return Promise.reject(new Error('Audio file is required.'));
+    throw new Error('Audio file is required.');
   }
 
-  return new Promise((resolve, reject) => {
-    const formData = new FormData();
-    formData.append('audio', file);
+  const formData = new FormData();
+  formData.append('audio', file);
 
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', '/api/analyze');
-
-    // Real upload progress tracking
-    if (xhr.upload && typeof onUploadProgress === 'function') {
-      xhr.upload.onprogress = (event) => {
-        if (event.lengthComputable && event.total > 0) {
-          const percent = Math.min(100, Math.max(0, Math.round((event.loaded / event.total) * 100)));
-          onUploadProgress(percent);
+  try {
+    const response = await axios.post('/api/analyze', formData, {
+      onUploadProgress: (progressEvent) => {
+        if (typeof onUploadProgress === 'function') {
+          const total = progressEvent.total || file.size;
+          if (total > 0) {
+            const percent = Math.min(100, Math.max(0, Math.round((progressEvent.loaded / total) * 100)));
+            onUploadProgress(percent);
+          }
         }
-      };
+      }
+    });
 
-      xhr.upload.onload = () => {
-        onUploadProgress(100);
-      };
+    if (typeof onUploadProgress === 'function') {
+      onUploadProgress(100);
     }
 
-    xhr.onload = () => {
-      let responseData = null;
-      try {
-        responseData = JSON.parse(xhr.responseText);
-      } catch {
-        responseData = null;
-      }
-
-      if (xhr.status >= 200 && xhr.status < 300) {
-        if (responseData) {
-          resolve(responseData);
-        } else {
-          resolve({});
-        }
-        return;
-      }
-
-      // Non-2xx error handling
+    return response.data;
+  } catch (error) {
+    if (error.response) {
+      const { status, data: responseData } = error.response;
       let errorMessage = 'This audio file could not be processed. Please try another audio file.';
-      let errorCode = xhr.status === 503 ? 'AI_HIGH_DEMAND' : 'ANALYSIS_FAILED';
+      let errorCode = status === 503 ? 'AI_HIGH_DEMAND' : 'ANALYSIS_FAILED';
 
       if (responseData && typeof responseData.error === 'string' && responseData.error.trim()) {
         errorMessage = responseData.error;
       }
       if (responseData && responseData.code) {
         errorCode = responseData.code;
-      } else if (xhr.status === 503 || (errorMessage && errorMessage.toLowerCase().includes('high demand'))) {
+      } else if (status === 503 || (errorMessage && errorMessage.toLowerCase().includes('high demand'))) {
         errorCode = 'AI_HIGH_DEMAND';
       }
 
-      const error = new Error(errorMessage);
-      error.code = errorCode;
-      error.status = xhr.status;
-      reject(error);
-    };
+      const customError = new Error(errorMessage);
+      customError.code = errorCode;
+      customError.status = status;
+      throw customError;
+    }
 
-    xhr.onerror = () => {
-      reject(
-        new Error(
-          'Unable to reach the analysis service. Please check your connection and try again.'
-        )
-      );
-    };
+    if (error.code === 'ECONNABORTED' || (error.message && error.message.toLowerCase().includes('timeout'))) {
+      const customError = new Error('The request took longer than expected. Please check your connection and try again.');
+      customError.code = 'TIMEOUT';
+      throw customError;
+    }
 
-    xhr.ontimeout = () => {
-      reject(
-        new Error(
-          'The request took longer than expected. Please check your connection and try again.'
-        )
-      );
-    };
+    if (error.request) {
+      const customError = new Error('Unable to reach the analysis service. Please check your connection and try again.');
+      customError.code = 'NETWORK_ERROR';
+      throw customError;
+    }
 
-    xhr.send(formData);
-  });
+    throw error;
+  }
 }
-

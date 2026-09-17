@@ -1,6 +1,4 @@
-/* =========================================================
-   Audio Word Cloud - Modern Dark Productivity Dashboard Design
-   ========================================================= */
+
 
 :root {
   --bg-base: #090d16;
@@ -78,7 +76,7 @@ body {
   background-color: var(--bg-base);
 }
 
-/* Accessible focus ring */
+
 button:focus-visible,
 input:focus-visible,
 [role="button"]:focus-visible,
@@ -87,9 +85,7 @@ input:focus-visible,
   outline-offset: 2px;
 }
 
-/* =========================================================
-   Layout Containers
-   ========================================================= */
+
 
 .app-layout-wrapper {
   display: flex;
@@ -111,9 +107,7 @@ input:focus-visible,
   box-sizing: border-box;
 }
 
-/* =========================================================
-   2. Audio Intake Studio Section
-   ========================================================= */
+
 
 .audio-studio-section {
   width: 100%;
@@ -153,7 +147,7 @@ input:focus-visible,
   line-height: 1.5;
 }
 
-/* 3. Segmented Control */
+
 .segmented-control {
   display: flex;
   background-color: var(--bg-input);
@@ -218,9 +212,7 @@ input:focus-visible,
   width: 100%;
 }
 
-/* =========================================================
-   Audio Uploader Component
-   ========================================================= */
+
 
 .audio-uploader {
   width: 100%;
@@ -390,9 +382,7 @@ input:focus-visible,
   margin-top: 1px;
 }
 
-/* =========================================================
-   Audio Recorder Component
-   ========================================================= */
+
 
 .audio-recorder-container {
   width: 100%;
@@ -438,7 +428,7 @@ input:focus-visible,
   color: var(--text-muted);
 }
 
-/* Microphone Device Selection (Custom Themed Dropdown) */
+
 .mic-selector-row {
   position: relative;
   width: 100%;
@@ -525,7 +515,7 @@ input:focus-visible,
   color: #818cf8;
 }
 
-/* Dropdown Menu Panel */
+
 .mic-custom-dropdown-menu {
   position: absolute;
   top: calc(100% + 6px);
@@ -802,7 +792,7 @@ input:focus-visible,
   color: var(--danger);
 }
 
-/* In-Recorder Paused Audio Preview */
+
 .recorder-paused-preview {
   width: 100%;
   margin: 6px 0 10px;
@@ -967,9 +957,7 @@ input:focus-visible,
   padding: 4px 0;
 }
 
-/* =========================================================
-   4. Selected Audio File Preview Card
-   ========================================================= */
+
 
 .studio-preview-section {
   margin-top: 18px;
@@ -1080,7 +1068,7 @@ input:focus-visible,
   height: 13px;
 }
 
-/* Custom Audio Player */
+
 .custom-audio-player {
   margin-top: 14px;
   background-color: var(--bg-card);
@@ -1237,9 +1225,7 @@ input:focus-visible,
   flex-shrink: 0;
 }
 
-/* =========================================================
-   5. Analyze Action Row
-   ========================================================= */
+
 
 .studio-actions-row {
   margin-top: 22px;
@@ -1334,9 +1320,7 @@ input:focus-visible,
   border-color: var(--border-card);
 }
 
-/* =========================================================
-   11. Loading Modal Popup Overlay (AnalysisProgress)
-   ========================================================= */
+
 
 .loading-modal-overlay {
   position: fixed;
@@ -1521,7 +1505,7 @@ input:focus-visible,
   background-color: rgba(255, 255, 255, 0.2);
 }
 
-/* Focused Progress High-Demand Awareness Banner */
+
 .progress-demand-banner {
   margin: 12px 0;
   background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(245, 158, 11, 0.05));
@@ -1589,9 +1573,7 @@ input:focus-visible,
   line-height: 1.35;
 }
 
-/* =========================================================
-   12. Error Presentation (ErrorMessage)
-   ========================================================= */
+
 
 .studio-error-wrapper {
   margin-top: 18px;
@@ -1606,7 +1588,7 @@ input:focus-visible,
   transition: all 0.2s ease-in-out;
 }
 
-/* High Demand / 503 Amber Warning Variant */
+
 .error-card-wrapper.high-demand {
   background-color: rgba(245, 158, 11, 0.08);
   border-color: rgba(245, 158, 11, 0.35);
@@ -1751,9 +1733,7 @@ input:focus-visible,
   background-color: rgba(245, 158, 11, 0.1);
 }
 
-/* =========================================================
-   6. Post-Analysis Results Dashboard Workspace
-   ========================================================= */
+
 
 .analysis-workspace {
   width: 100%;
@@ -1812,10 +1792,10 @@ input:focus-visible,
   color: #6ee7b7;
 }
 
-/* 10. Summary Stat Cards */
+
 .analysis-summary-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
   margin-bottom: 24px;
 }
@@ -1844,6 +1824,12 @@ input:focus-visible,
   flex-shrink: 0;
 }
 
+.stat-icon-wrapper.stat-icon-timer {
+  background-color: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.25);
+  color: #38bdf8;
+}
+
 .stat-svg {
   width: 20px;
   height: 20px;
@@ -1870,7 +1856,7 @@ input:focus-visible,
   color: var(--text-primary);
 }
 
-/* Two-Column Results Dashboard (Word Cloud Left / Key Topics Right) */
+
 .dashboard-columns-grid {
   display: grid;
   grid-template-columns: 1.35fr 0.85fr;
@@ -1885,7 +1871,7 @@ input:focus-visible,
   flex-direction: column;
 }
 
-/* Common Card Header Styles */
+
 .card-section-title {
   margin: 0;
   font-size: 16px;
@@ -1900,9 +1886,7 @@ input:focus-visible,
   color: var(--text-muted);
 }
 
-/* =========================================================
-   7. Word Cloud Card (Centerpiece)
-   ========================================================= */
+
 
 .wordcloud-card {
   background-color: var(--bg-card);
@@ -2002,9 +1986,7 @@ input:focus-visible,
   font-style: italic;
 }
 
-/* =========================================================
-   8. Key Topics Panel
-   ========================================================= */
+
 
 .key-topics-card {
   background-color: var(--bg-card);
@@ -2048,7 +2030,7 @@ input:focus-visible,
   padding-right: 4px;
 }
 
-/* Custom scrollbar */
+
 .key-topics-scrollbox::-webkit-scrollbar,
 .transcript-body-scrollbox::-webkit-scrollbar {
   width: 6px;
@@ -2140,9 +2122,7 @@ input:focus-visible,
   font-style: italic;
 }
 
-/* =========================================================
-   9. Transcript Section Card
-   ========================================================= */
+
 
 .transcript-card {
   background-color: var(--bg-card);
@@ -2252,9 +2232,7 @@ input:focus-visible,
   font-style: italic;
 }
 
-/* =========================================================
-   Workspace Bottom Actions
-   ========================================================= */
+
 
 .workspace-bottom-actions {
   margin-top: 28px;
@@ -2290,7 +2268,7 @@ input:focus-visible,
   color: var(--accent-primary);
 }
 
-/* Screen reader only utility */
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -2303,9 +2281,7 @@ input:focus-visible,
   border: 0;
 }
 
-/* =========================================================
-   12. Analysis Progress Modal Component
-   ========================================================= */
+
 
 .loading-modal-overlay {
   position: fixed;
@@ -2590,11 +2566,9 @@ input:focus-visible,
   to { transform: scale(1.2); opacity: 1; }
 }
 
-/* =========================================================
-   13. Responsive Breakpoints
-   ========================================================= */
 
-/* Tablet & Smaller Laptops (< 900px) */
+
+
 @media (max-width: 900px) {
   .dashboard-columns-grid {
     grid-template-columns: 1fr;
@@ -2602,11 +2576,12 @@ input:focus-visible,
   }
 
   .analysis-summary-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
   }
 }
 
-/* Tablet (< 768px) */
+
 @media (max-width: 768px) {
   .main-content-container {
     padding: 16px 14px 40px;
@@ -2617,7 +2592,7 @@ input:focus-visible,
   }
 
   .analysis-summary-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
     gap: 10px;
   }
 
@@ -2636,8 +2611,12 @@ input:focus-visible,
   }
 }
 
-/* Mobile Devices (< 480px) */
+
 @media (max-width: 480px) {
+  .analysis-summary-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
   h1 {
     font-size: 26px;
     letter-spacing: -0.5px;
@@ -2757,7 +2736,7 @@ input:focus-visible,
   }
 }
 
-/* Small Mobile (< 340px) */
+
 @media (max-width: 340px) {
   .main-content-container {
     padding: 12px 8px 32px;

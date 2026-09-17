@@ -1,6 +1,5 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Maximum number of prominent keywords to return for the word cloud
 export const MAX_KEYWORDS = 25;
 
 async function generateContentWithRetry(model, prompt, maxRetries = 2) {
@@ -39,19 +38,11 @@ async function generateContentWithRetry(model, prompt, maxRetries = 2) {
   }
 }
 
-/**
- * Extracts meaningful, prominent terms from a transcript using Gemini AI.
- * Filters filler words/stopwords, normalizes variants, and computes semantic weights.
- *
- * @param {string} transcript - The transcribed text to analyze.
- * @returns {Promise<Array<{ term: string, weight: number }>>}
- */
 export async function extractKeywords(transcript) {
   if (!transcript || typeof transcript !== 'string' || !transcript.trim()) {
     return [];
   }
 
-  // If transcript is too brief or contains no meaningful spoken content
   if (transcript.trim().length < 5) {
     return [];
   }
@@ -112,7 +103,6 @@ ${transcript}
       rawList = rawList.keywords || [];
     }
 
-    // Sanitize, normalize, validate, and deduplicate keywords
     const seen = new Set();
     const sanitizedKeywords = [];
 
@@ -122,7 +112,6 @@ ${transcript}
       const cleanTerm = item.term.trim();
       const lowerKey = cleanTerm.toLowerCase();
 
-      // Ensure term is non-empty and not duplicated
       if (cleanTerm.length > 1 && !seen.has(lowerKey)) {
         seen.add(lowerKey);
 
@@ -139,7 +128,6 @@ ${transcript}
       }
     }
 
-    // Sort keywords by descending weight (prominence) and limit to MAX_KEYWORDS
     sanitizedKeywords.sort((a, b) => b.weight - a.weight);
 
     return sanitizedKeywords.slice(0, MAX_KEYWORDS);

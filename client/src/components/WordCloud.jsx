@@ -1,17 +1,10 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import WordCloudAPI from 'wordcloud';
 
-/**
- * WordCloud component renders terms sized proportionally to AI prominence weights
- * and allows downloading the generated visualization as a PNG.
- *
- * @param {{ keywords: Array<{ term: string, weight: number }> }} props
- */
 export default function WordCloud({ keywords }) {
   const [isDownloading, setIsDownloading] = useState(false);
   const canvasRef = useRef(null);
 
-  // Filter out any invalid keyword entries
   const validKeywords = useMemo(() => {
     return Array.isArray(keywords)
       ? keywords.filter(
@@ -29,15 +22,11 @@ export default function WordCloud({ keywords }) {
     const canvas = canvasRef.current;
     if (!canvas || validKeywords.length === 0) return;
 
-    // Reset and clear canvas before drawing
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Convert keywords to [word, size] format for wordcloud2
-    // Multiply weight (1-10) to get a clear visual font scale
     const list = validKeywords.map((k) => [k.term, Math.max(k.weight * 5, 12)]);
 
-    // Modern calm palette for word rendering
     const colors = [
       '#2563eb',
       '#7c3aed',
@@ -67,7 +56,6 @@ export default function WordCloud({ keywords }) {
     }
 
     return () => {
-      // Clean up canvas on unmount
       if (WordCloudAPI.stop) {
         WordCloudAPI.stop();
       }
@@ -81,7 +69,6 @@ export default function WordCloud({ keywords }) {
     setIsDownloading(true);
 
     try {
-      // Convert the rendered canvas into a PNG image data URL
       const dataUrl = canvas.toDataURL('image/png');
       const downloadLink = document.createElement('a');
       downloadLink.href = dataUrl;
@@ -172,7 +159,6 @@ export default function WordCloud({ keywords }) {
         />
       </div>
 
-      {/* Accessible text representation for screen readers */}
       <div className="sr-only" aria-label="Extracted terms and prominence list">
         <ul>
           {validKeywords.map((item) => (

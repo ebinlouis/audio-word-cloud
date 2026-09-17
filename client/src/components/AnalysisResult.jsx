@@ -1,9 +1,6 @@
 import { useState } from 'react';
 import WordCloud from './WordCloud';
 
-/**
- * Format duration into mm:ss or human-readable format.
- */
 function formatDuration(seconds) {
   if (typeof seconds !== 'number' || isNaN(seconds) || seconds <= 0) {
     return 'Available';
@@ -13,28 +10,30 @@ function formatDuration(seconds) {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 }
 
-/**
- * AnalysisResult component displays the post-analysis workspace:
- * Summary Metrics Bar, Word Cloud (Left/Main), Key Topics Panel (Right/Secondary),
- * Full Transcript Card, and New Analysis CTA with 2-second tactile inline loaders.
- *
- * @param {{
- *   result: { transcript?: string, keywords?: Array<{ term: string, weight: number }> } | null,
- *   onReset?: () => void,
- *   audioDuration?: number | null,
- *   file?: File | null
- * }} props
- */
-export default function AnalysisResult({ result, onReset, audioDuration = null, file = null }) {
+function formatAnalysisTime(seconds) {
+  if (typeof seconds !== 'number' || isNaN(seconds) || seconds <= 0) {
+    return 'Completed';
+  }
+  if (seconds < 10) {
+    return `${seconds.toFixed(1)}s`;
+  }
+  if (seconds < 60) {
+    return `${Math.round(seconds)}s`;
+  }
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.round(seconds % 60);
+  return `${mins}m ${secs}s`;
+}
+
+export default function AnalysisResult({ result, onReset, audioDuration = null, file = null, analysisTime = null }) {
   const [displayedKeywords, setDisplayedKeywords] = useState(() => {
     return Array.isArray(result?.keywords) ? result.keywords : [];
   });
   const [prevResult, setPrevResult] = useState(result);
-  const [copyStatus, setCopyStatus] = useState(''); // '' | 'copying' | 'copied' | 'error'
+  const [copyStatus, setCopyStatus] = useState('');
   const [isDownloadingTxt, setIsDownloadingTxt] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
 
-  // Update displayed keywords if result object reference changes
   if (result !== prevResult) {
     setPrevResult(result);
     setDisplayedKeywords(Array.isArray(result?.keywords) ? result.keywords : []);
@@ -142,7 +141,6 @@ export default function AnalysisResult({ result, onReset, audioDuration = null, 
         </div>
       </div>
 
-      {/* 10. Compact Analysis Summary Stats */}
       <div className="analysis-summary-grid" aria-label="Analysis summary overview">
         <div className="summary-stat-card">
           <div className="stat-icon-wrapper" aria-hidden="true">
@@ -155,6 +153,24 @@ export default function AnalysisResult({ result, onReset, audioDuration = null, 
             <span className="stat-label">Audio Duration</span>
             <span className="stat-value">
               {derivedDuration ? formatDuration(derivedDuration) : 'Processed'}
+            </span>
+          </div>
+        </div>
+
+        <div className="summary-stat-card">
+          <div className="stat-icon-wrapper" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="stat-svg">
+              <circle cx="12" cy="13" r="8" />
+              <path d="M12 9v4l2 2" />
+              <path d="M5 3L2 6" />
+              <path d="M22 6l-3-3" />
+              <path d="M10 2h4" />
+            </svg>
+          </div>
+          <div className="stat-text-group">
+            <span className="stat-label">Time Taken</span>
+            <span className="stat-value">
+              {analysisTime ? formatAnalysisTime(analysisTime) : 'Completed'}
             </span>
           </div>
         </div>
@@ -192,14 +208,11 @@ export default function AnalysisResult({ result, onReset, audioDuration = null, 
         </div>
       </div>
 
-      {/* Two-Column Results Dashboard (Word Cloud Left / Key Topics Right) */}
       <div className="dashboard-columns-grid">
-        {/* LEFT / MAIN: Word Cloud */}
         <div className="dashboard-main-col">
           <WordCloud keywords={displayedKeywords} />
         </div>
 
-        {/* RIGHT / SECONDARY: Key Topics Panel */}
         <div className="dashboard-secondary-col">
           <div className="key-topics-card" aria-label="Key Topics extracted from audio">
             <div className="key-topics-header">
@@ -248,7 +261,6 @@ export default function AnalysisResult({ result, onReset, audioDuration = null, 
         </div>
       </div>
 
-      {/* 9. Full Width Transcript Card */}
       <section className="transcript-card" aria-labelledby="transcript-heading">
         <div className="transcript-card-header">
           <div>
