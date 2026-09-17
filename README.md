@@ -277,9 +277,27 @@ Comprehensive automated and manual verification passes were performed:
 
 ---
 
+## Past Analyses (In-Memory History)
+
+The application includes an in-memory **Past Analyses** history feature allowing users to review previously analyzed recordings during the active server session without re-invoking AI services.
+
+### Key Characteristics & Limitations:
+- **Server Memory Only**: Analyses are stored purely in Node.js server RAM. **All history is automatically reset whenever the backend restarts or redeploys.**
+- **No Database**: No database (such as MongoDB, PostgreSQL, or SQLite) or local disk file persistence is used.
+- **Zero Audio Storage**: Only lightweight analysis metadata, transcripts, and extracted keyword weights are stored. **Original audio files and binary buffers are never retained.**
+- **Capacity Limit (Safeguard)**: The in-memory collection is capped at **20 recent analyses** (`MAX_STORED_ANALYSES = 20`). When the limit is exceeded, the oldest record is evicted to maintain the newest 20 analyses.
+
+### Endpoints:
+- `GET /api/analyses` - Returns lightweight metadata list of past sessions.
+- `GET /api/analyses/:id` - Returns full analysis data (transcript & keywords) for instant rendering.
+- `DELETE /api/analyses/:id` - Removes a single analysis from server memory.
+
+---
+
 ## Known Limitations
 
 - Requires an active internet connection and a valid Google Gemini API key to perform audio transcription and keyword extraction.
+- Past analyses history is stored in-memory only and does not persist across server restarts.
 
 ---
 

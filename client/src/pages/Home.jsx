@@ -5,9 +5,11 @@ import AudioPreview from '../components/AudioPreview';
 import AnalysisProgress from '../components/AnalysisProgress';
 import ErrorMessage from '../components/ErrorMessage';
 import AnalysisResult from '../components/AnalysisResult';
+import PastAnalyses from '../components/PastAnalyses';
 import { analyzeAudio } from '../services/analysisApi';
 
 export default function Home() {
+  const [activeTab, setActiveTab] = useState('studio');
   const [inputMode, setInputMode] = useState('upload');
   const [file, setFile] = useState(null);
   const [audioDuration, setAudioDuration] = useState(null);
@@ -147,12 +149,82 @@ export default function Home() {
     handleReset();
   };
 
+  const handleSelectPastAnalysis = (record) => {
+    if (!record) return;
+    setResult({
+      transcript: record.transcript,
+      keywords: record.keywords,
+      id: record.id
+    });
+    setAudioDuration(record.duration || null);
+    setFile({
+      name: record.fileName || 'Past Audio Recording',
+      size: record.fileSize || null,
+      duration: record.duration || null
+    });
+    setAnalysisTime(null);
+    setError(null);
+  };
+
   const hasActiveResult = Boolean(result) && !isAnalyzing;
 
   return (
     <div className="app-layout-wrapper">
+      <header className="app-main-navbar">
+        <div className="navbar-container">
+          <div className="navbar-brand">
+            <span className="navbar-brand-icon">☁️</span>
+            <span className="navbar-brand-text">Audio Word Cloud</span>
+          </div>
+
+          {!hasActiveResult && !isAnalyzing && (
+            <nav className="navbar-nav-links" aria-label="Main Navigation">
+              <button
+                type="button"
+                className={`navbar-tab-btn ${activeTab === 'studio' ? 'active' : ''}`}
+                onClick={() => setActiveTab('studio')}
+                aria-current={activeTab === 'studio' ? 'page' : undefined}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="nav-icon" aria-hidden="true">
+                  <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                  <line x1="12" y1="19" x2="12" y2="22" />
+                </svg>
+                <span>Analysis Studio</span>
+              </button>
+
+              <button
+                type="button"
+                className={`navbar-tab-btn ${activeTab === 'history' ? 'active' : ''}`}
+                onClick={() => setActiveTab('history')}
+                aria-current={activeTab === 'history' ? 'page' : undefined}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="nav-icon" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+                <span>Past Analyses</span>
+              </button>
+            </nav>
+          )}
+        </div>
+      </header>
+
       <main className="main-content-container">
-        {!hasActiveResult ? (
+        {hasActiveResult ? (
+          <AnalysisResult
+            result={result}
+            onReset={handleReset}
+            audioDuration={audioDuration}
+            file={file}
+            analysisTime={analysisTime}
+          />
+        ) : activeTab === 'history' ? (
+          <PastAnalyses
+            onSelectAnalysis={handleSelectPastAnalysis}
+            onBackToStudio={() => setActiveTab('studio')}
+          />
+        ) : (
           <section className="audio-studio-section" aria-label="Audio intake and configuration">
             <div className="studio-card">
               <div className="studio-card-header">
@@ -302,14 +374,6 @@ export default function Home() {
               )}
             </div>
           </section>
-        ) : (
-          <AnalysisResult
-            result={result}
-            onReset={handleReset}
-            audioDuration={audioDuration}
-            file={file}
-            analysisTime={analysisTime}
-          />
         )}
       </main>
     </div>

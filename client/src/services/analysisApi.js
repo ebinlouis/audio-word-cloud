@@ -62,3 +62,47 @@ export async function analyzeAudio(file, onUploadProgress) {
     throw error;
   }
 }
+
+export async function getAnalyses() {
+  try {
+    const response = await axios.get('/api/analyses');
+    return Array.isArray(response.data) ? response.data : [];
+  } catch (error) {
+    const message = error.response?.data?.error || 'Unable to load past analyses history.';
+    const customError = new Error(message);
+    customError.status = error.response?.status || 500;
+    throw customError;
+  }
+}
+
+export async function getAnalysisById(id) {
+  if (!id) {
+    throw new Error('Analysis ID is required.');
+  }
+
+  try {
+    const response = await axios.get(`/api/analyses/${encodeURIComponent(id)}`);
+    return response.data;
+  } catch (error) {
+    const message = error.response?.data?.error || 'Unable to load the requested analysis.';
+    const customError = new Error(message);
+    customError.status = error.response?.status || 500;
+    throw customError;
+  }
+}
+
+export async function deleteAnalysis(id) {
+  if (!id) {
+    throw new Error('Analysis ID is required.');
+  }
+
+  try {
+    const response = await axios.delete(`/api/analyses/${encodeURIComponent(id)}`);
+    return response.data;
+  } catch (error) {
+    const message = error.response?.data?.error || 'Unable to delete the analysis.';
+    const customError = new Error(message);
+    customError.status = error.response?.status || 500;
+    throw customError;
+  }
+}

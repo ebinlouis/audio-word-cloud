@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import analysisRoutes from './routes/analysisRoutes.js';
+import analysesRoutes from './routes/analysesRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,6 +20,7 @@ const PORT = process.env.PORT || 5005;
 app.use(express.json());
 
 app.use('/api/analyze', analysisRoutes);
+app.use('/api/analyses', analysesRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
