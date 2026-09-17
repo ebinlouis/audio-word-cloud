@@ -51,7 +51,7 @@ cp server/.env.example server/.env
 Add:
 
 ```env
-PORT=5005
+PORT=5000
 GEMINI_API_KEY=your_gemini_api_key_here
 GEMINI_MODEL=gemini-3.6-flash
 ```
@@ -73,7 +73,7 @@ node server/app.js
 Open:
 
 ```text
-http://localhost:5005
+http://localhost:5000
 ```
 
 ## 3. AI Service
