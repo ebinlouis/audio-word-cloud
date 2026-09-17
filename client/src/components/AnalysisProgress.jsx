@@ -13,16 +13,35 @@ export default function AnalysisProgress({
   isUploading = false,
   isCompleted = false,
   retryStatus = null,
+  isRetry = false,
+  hasTranscript = false,
 }) {
-  const [timedStageIndex, setTimedStageIndex] = useState(0);
+  const initialStage = isRetry ? (hasTranscript ? 3 : 2) : 0;
+  const [timedStageIndex, setTimedStageIndex] = useState(initialStage);
 
   const isRetryingHighDemand = Boolean(retryStatus && retryStatus.isRetrying);
   const currentAttempt = retryStatus?.attempt || 1;
   const maxAttempts = retryStatus?.maxAttempts || 5;
 
   useEffect(() => {
-    if (isCompleted || (isUploading && uploadProgress < 100) || isRetryingHighDemand) {
+    if (isCompleted || (!isRetry && isUploading && uploadProgress < 100) || isRetryingHighDemand) {
       return;
+    }
+
+    if (isRetry) {
+      if (hasTranscript) {
+        setTimedStageIndex(3);
+        const timer = setTimeout(() => {
+          setTimedStageIndex(4);
+        }, 8000);
+        return () => clearTimeout(timer);
+      } else {
+        setTimedStageIndex(2);
+        const timer = setTimeout(() => {
+          setTimedStageIndex(3);
+        }, 16000);
+        return () => clearTimeout(timer);
+      }
     }
 
     const timers = [
@@ -40,23 +59,26 @@ export default function AnalysisProgress({
     return () => {
       timers.forEach((t) => clearTimeout(t));
     };
-  }, [isUploading, uploadProgress, isCompleted, isRetryingHighDemand]);
+  }, [isUploading, uploadProgress, isCompleted, isRetryingHighDemand, isRetry, hasTranscript]);
 
   let stageIndex = timedStageIndex;
   if (isCompleted) {
     stageIndex = PIPELINE_STAGES.length;
-  } else if (isUploading && uploadProgress < 100) {
+  } else if (!isRetry && isUploading && uploadProgress < 100) {
     stageIndex = 0;
   } else if (isRetryingHighDemand) {
-    stageIndex = 3;
+    stageIndex = hasTranscript ? 3 : 2;
   }
 
   const getHeaderTitle = () => {
     if (isCompleted) {
       return 'Analysis complete';
     }
-    if (isUploading && uploadProgress < 100) {
+    if (!isRetry && isUploading && uploadProgress < 100) {
       return 'Uploading audio';
+    }
+    if (isRetry) {
+      return hasTranscript ? 'Resuming topic extraction' : 'Resuming transcription';
     }
     return 'Analyzing your session';
   };
@@ -68,13 +90,18 @@ export default function AnalysisProgress({
     if (isRetryingHighDemand) {
       return `The AI service is experiencing high demand. Retrying automatically (Attempt ${currentAttempt} of ${maxAttempts})...`;
     }
-    if (isUploading && uploadProgress < 100) {
+    if (!isRetry && isUploading && uploadProgress < 100) {
       return 'Sending your audio recording to the secure analysis engine.';
+    }
+    if (isRetry) {
+      return hasTranscript
+        ? 'Using existing transcription to extract topics and keywords...'
+        : 'Audio file cached. Retrying transcription with Gemini AI...';
     }
     return "We're processing your recording and identifying the main topics discussed.";
   };
 
-  const isUploadingState = isUploading && uploadProgress < 100;
+  const isUploadingState = !isRetry && isUploading && uploadProgress < 100;
 
   return (
     <div

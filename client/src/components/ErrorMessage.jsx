@@ -21,6 +21,8 @@ export default function ErrorMessage({
 
   const isQuotaExceeded =
     errorCode === 'AI_QUOTA_EXCEEDED' ||
+    errorCode === 'RATE_LIMIT' ||
+    Number(errorCode) === 429 ||
     rawMessage.toLowerCase().includes('quota') ||
     rawMessage.toLowerCase().includes('rate limit') ||
     rawMessage.toLowerCase().includes('429');
@@ -75,7 +77,7 @@ export default function ErrorMessage({
 
   const getMessage = () => {
     if (isQuotaExceeded) {
-      return 'Google Gemini API request limit reached. Please wait ~20–30 seconds and click "Try Again".';
+      return 'Google Gemini API request limit reached. Please wait a while before trying again.';
     }
     if (isInvalidKey) {
       return rawMessage || 'The Gemini API key is missing or invalid. Please check your server/.env file.';
@@ -154,7 +156,7 @@ export default function ErrorMessage({
       </div>
 
       <div className="error-actions-group">
-        {onRetry && (
+        {onRetry && !isQuotaExceeded && (
           <button
             type="button"
             className={`btn-error-retry ${isRetrying ? 'btn-loading' : ''}`}
@@ -180,7 +182,17 @@ export default function ErrorMessage({
             )}
           </button>
         )}
-        {onReset && (
+        {isQuotaExceeded && (
+          <button
+            type="button"
+            className="btn-error-retry"
+            onClick={onClose || onReset}
+            aria-label="Close error notification"
+          >
+            <span>Close</span>
+          </button>
+        )}
+        {onReset && !isQuotaExceeded && (
           <button
             type="button"
             className={`btn-error-reset ${isResetting ? 'btn-loading' : ''}`}
@@ -198,7 +210,7 @@ export default function ErrorMessage({
             )}
           </button>
         )}
-        {onClose && !onReset && (
+        {onClose && !onReset && !isQuotaExceeded && (
           <button
             type="button"
             className="btn-error-reset"

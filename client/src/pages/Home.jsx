@@ -24,6 +24,7 @@ export default function Home() {
   const [isClearing, setIsClearing] = useState(false);
   const [retryStatus, setRetryStatus] = useState({ isRetrying: false, attempt: 1, maxAttempts: 5 });
   const [currentJobId, setCurrentJobId] = useState(null);
+  const [hasTranscript, setHasTranscript] = useState(false);
 
   const handleFileSelected = (selectedFile, duration = null) => {
     setFile(selectedFile);
@@ -36,6 +37,7 @@ export default function Home() {
     setError(null);
     setAnalysisTime(null);
     setCurrentJobId(null);
+    setHasTranscript(false);
   };
 
   const handleReset = () => {
@@ -51,6 +53,7 @@ export default function Home() {
     setIsClearing(false);
     setRetryStatus({ isRetrying: false, attempt: 1, maxAttempts: 5 });
     setCurrentJobId(null);
+    setHasTranscript(false);
     setSessionKey((prev) => prev + 1);
   };
 
@@ -83,6 +86,7 @@ export default function Home() {
           // If the cached session expired on the server, fall back to a full upload
           if (retryErr.code === 'SESSION_EXPIRED') {
             setCurrentJobId(null);
+            setHasTranscript(false);
             setIsUploading(true);
             setUploadProgress(0);
             response = await analyzeAudio(file, (percent) => {
@@ -110,6 +114,7 @@ export default function Home() {
       setAnalysisTime(elapsedSeconds);
       setIsCompleted(true);
       setCurrentJobId(null);
+      setHasTranscript(false);
       await new Promise((resolve) => setTimeout(resolve, 500));
       setResult(response);
       setIsAnalyzing(false);
@@ -120,12 +125,14 @@ export default function Home() {
       setIsCompleted(false);
       setResult(null);
       setCurrentJobId(err.jobId || null);
+      setHasTranscript(Boolean(err.hasTranscript));
 
       setError({
         message: err.message || 'Analysis failed. Please try again.',
         code: err.code || 'ANALYSIS_FAILED',
         status: err.status || 500,
-        jobId: err.jobId || null
+        jobId: err.jobId || null,
+        hasTranscript: Boolean(err.hasTranscript)
       });
     }
   };
@@ -345,6 +352,8 @@ export default function Home() {
                     isUploading={isUploading}
                     isCompleted={isCompleted}
                     retryStatus={retryStatus}
+                    isRetry={Boolean(currentJobId)}
+                    hasTranscript={hasTranscript}
                   />
                 </div>
               )}
