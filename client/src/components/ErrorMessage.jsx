@@ -1,6 +1,14 @@
 import { useState } from 'react';
 
-export default function ErrorMessage({ message, code, onRetry, onReset, disabled = false }) {
+export default function ErrorMessage({
+  message,
+  code,
+  onRetry,
+  onReset,
+  onClose,
+  isModal = true,
+  disabled = false
+}) {
   const [isRetrying, setIsRetrying] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
 
@@ -11,14 +19,29 @@ export default function ErrorMessage({ message, code, onRetry, onReset, disabled
   const rawMessage = typeof message === 'object' && message ? message.message : String(message || '');
   const errorCode = typeof message === 'object' && message?.code ? message.code : (code || '');
 
+  const isQuotaExceeded =
+    errorCode === 'AI_QUOTA_EXCEEDED' ||
+    rawMessage.toLowerCase().includes('quota') ||
+    rawMessage.toLowerCase().includes('rate limit') ||
+    rawMessage.toLowerCase().includes('429');
+
+  const isInvalidKey =
+    errorCode === 'AI_INVALID_KEY' ||
+    errorCode === 'AI_CONFIGURATION_ERROR' ||
+    rawMessage.toLowerCase().includes('invalid') ||
+    rawMessage.toLowerCase().includes('403') ||
+    rawMessage.toLowerCase().includes('missing api key');
+
   const isHighDemand =
-    errorCode === 'AI_HIGH_DEMAND' ||
-    errorCode === 'AI_SERVICE_UNAVAILABLE' ||
-    rawMessage.toLowerCase().includes('high demand') ||
-    rawMessage.toLowerCase().includes('503') ||
-    rawMessage.toLowerCase().includes('temporarily unavailable') ||
-    rawMessage.toLowerCase().includes('resource_exhausted') ||
-    rawMessage.toLowerCase().includes('overloaded');
+    !isQuotaExceeded &&
+    !isInvalidKey &&
+    (errorCode === 'AI_HIGH_DEMAND' ||
+      errorCode === 'AI_SERVICE_UNAVAILABLE' ||
+      rawMessage.toLowerCase().includes('high demand') ||
+      rawMessage.toLowerCase().includes('503') ||
+      rawMessage.toLowerCase().includes('temporarily unavailable') ||
+      rawMessage.toLowerCase().includes('resource_exhausted') ||
+      rawMessage.toLowerCase().includes('overloaded'));
 
   const handleRetryClick = () => {
     if (disabled || isRetrying) return;
@@ -36,15 +59,44 @@ export default function ErrorMessage({ message, code, onRetry, onReset, disabled
     }, 1500);
   };
 
-  return (
+  const getHeading = () => {
+    if (isQuotaExceeded) return 'API Rate Limit Reached';
+    if (isInvalidKey) return 'AI Configuration Error';
+    if (isHighDemand) return 'Service Temporarily Busy';
+    return "Analysis couldn't be completed";
+  };
+
+  const getBadgeText = () => {
+    if (isQuotaExceeded) return 'Rate Limited';
+    if (isInvalidKey) return 'Check Server Key';
+    if (isHighDemand) return 'High Traffic';
+    return null;
+  };
+
+  const getMessage = () => {
+    if (isQuotaExceeded) {
+      return 'Google Gemini API request limit reached. Please wait ~20–30 seconds and click "Try Again".';
+    }
+    if (isInvalidKey) {
+      return rawMessage || 'The Gemini API key is missing or invalid. Please check your server/.env file.';
+    }
+    if (isHighDemand) {
+      return 'The AI service is currently experiencing high traffic. Please wait a few moments and click "Try Again".';
+    }
+    return rawMessage || "We couldn't process this recording right now. Please try again or choose another file.";
+  };
+
+  const content = (
     <div
-      className={`error-card-wrapper ${isHighDemand ? 'high-demand' : ''}`}
+      className={`error-card-wrapper ${isModal ? 'modal-popup' : ''} ${
+        isHighDemand || isQuotaExceeded ? 'high-demand' : ''
+      }`}
       role="alert"
       aria-live="assertive"
     >
       <div className="error-card-header">
         <div className="error-icon-box" aria-hidden="true">
-          {isHighDemand ? (
+          {isHighDemand || isQuotaExceeded ? (
             <svg
               className="error-icon-svg"
               viewBox="0 0 24 24"
@@ -76,19 +128,29 @@ export default function ErrorMessage({ message, code, onRetry, onReset, disabled
         </div>
         <div className="error-title-group">
           <div className="error-heading-row">
-            <h4 className="error-heading">
-              {isHighDemand ? "Service Temporarily Busy" : "Analysis couldn't be completed"}
+            <h4 id="error-modal-title" className="error-heading">
+              {getHeading()}
             </h4>
-            {isHighDemand && (
-              <span className="demand-badge">High Traffic</span>
+            {getBadgeText() && (
+              <span className="demand-badge">{getBadgeText()}</span>
             )}
           </div>
-          <p className="error-text">
-            {isHighDemand
-              ? 'The automated analysis service is currently experiencing a temporary traffic spike. Please wait a few moments and click "Try Again".'
-              : rawMessage || "We couldn't process this recording right now. Please try again or choose another file."}
-          </p>
+          <p className="error-text">{getMessage()}</p>
         </div>
+
+        {onClose && (
+          <button
+            type="button"
+            className="error-modal-close-btn"
+            onClick={onClose}
+            aria-label="Dismiss error"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        )}
       </div>
 
       <div className="error-actions-group">
@@ -113,7 +175,7 @@ export default function ErrorMessage({ message, code, onRetry, onReset, disabled
                   <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
                   <path d="M3 21v-5h5" />
                 </svg>
-                <span>{isHighDemand ? 'Try Again in a Moment' : 'Try Again'}</span>
+                <span>Try Again</span>
               </>
             )}
           </button>
@@ -136,7 +198,37 @@ export default function ErrorMessage({ message, code, onRetry, onReset, disabled
             )}
           </button>
         )}
+        {onClose && !onReset && (
+          <button
+            type="button"
+            className="btn-error-reset"
+            onClick={onClose}
+            aria-label="Dismiss error message"
+          >
+            <span>Dismiss</span>
+          </button>
+        )}
       </div>
+    </div>
+  );
+
+  if (!isModal) {
+    return content;
+  }
+
+  return (
+    <div
+      className="error-modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="error-modal-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && onClose) {
+          onClose();
+        }
+      }}
+    >
+      {content}
     </div>
   );
 }

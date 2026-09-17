@@ -62,7 +62,6 @@ export default function Home() {
   const handleAnalyze = async () => {
     if (!file || isAnalyzing) return;
 
-    const MAX_RETRIES = 5;
     const analysisStartTime = performance.now();
     setIsAnalyzing(true);
     setIsUploading(true);
@@ -71,75 +70,33 @@ export default function Home() {
     setAnalysisTime(null);
     setError(null);
     setResult(null);
-    setRetryStatus({ isRetrying: false, attempt: 1, maxAttempts: MAX_RETRIES });
 
-    let currentAttempt = 1;
-    let analysisSuccess = false;
-    let lastError = null;
-    let finalResponse = null;
-
-    while (currentAttempt <= MAX_RETRIES && !analysisSuccess) {
-      try {
-        const response = await analyzeAudio(file, (percent) => {
-          setUploadProgress(percent);
-          if (percent >= 100) {
-            setIsUploading(false);
-          }
-        });
-        finalResponse = response;
-        analysisSuccess = true;
-        setRetryStatus({ isRetrying: false, attempt: 1, maxAttempts: MAX_RETRIES });
-        break;
-      } catch (err) {
-        lastError = err;
-        setIsUploading(false);
-        const isHighDemand =
-          err.code === 'AI_HIGH_DEMAND' ||
-          err.status === 503 ||
-          err.status === 429 ||
-          (err.message && err.message.toLowerCase().includes('high demand')) ||
-          (err.message && err.message.toLowerCase().includes('503'));
-
-        if (isHighDemand && currentAttempt < MAX_RETRIES) {
-          currentAttempt += 1;
-          setRetryStatus({
-            isRetrying: true,
-            attempt: currentAttempt,
-            maxAttempts: MAX_RETRIES
-          });
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-        } else {
-          break;
+    try {
+      const response = await analyzeAudio(file, (percent) => {
+        setUploadProgress(percent);
+        if (percent >= 100) {
+          setIsUploading(false);
         }
-      }
-    }
+      });
 
-    if (analysisSuccess && finalResponse) {
       const elapsedSeconds = Math.max(0.1, (performance.now() - analysisStartTime) / 1000);
       setAnalysisTime(elapsedSeconds);
       setIsCompleted(true);
-      await new Promise((resolve) => setTimeout(resolve, 650));
-      setResult(finalResponse);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      setResult(response);
       setIsAnalyzing(false);
       setIsCompleted(false);
-      setRetryStatus({ isRetrying: false, attempt: 1, maxAttempts: MAX_RETRIES });
-    } else if (lastError) {
-      const isHighDemand =
-        lastError.code === 'AI_HIGH_DEMAND' ||
-        lastError.status === 503 ||
-        (lastError.message && lastError.message.toLowerCase().includes('high demand'));
+    } catch (err) {
+      setIsUploading(false);
+      setIsAnalyzing(false);
+      setIsCompleted(false);
+      setResult(null);
 
       setError({
-        message: isHighDemand
-          ? 'The AI model is experiencing high demand after 5 retry attempts. Please wait a moment and try again.'
-          : lastError.message || 'Analysis failed. Please try again.',
-        code: isHighDemand ? 'AI_HIGH_DEMAND' : (lastError.code || 'ANALYSIS_FAILED'),
-        status: lastError.status || 500
+        message: err.message || 'Analysis failed. Please try again.',
+        code: err.code || 'ANALYSIS_FAILED',
+        status: err.status || 500
       });
-      setResult(null);
-      setIsAnalyzing(false);
-      setIsCompleted(false);
-      setRetryStatus({ isRetrying: false, attempt: 1, maxAttempts: MAX_RETRIES });
     }
   };
 
@@ -363,14 +320,13 @@ export default function Home() {
               )}
 
               {error && (
-                <div className="studio-error-wrapper">
-                  <ErrorMessage
-                    message={error}
-                    onRetry={handleAnalyze}
-                    onReset={handleReset}
-                    disabled={isAnalyzing}
-                  />
-                </div>
+                <ErrorMessage
+                  message={error}
+                  onRetry={handleAnalyze}
+                  onReset={handleReset}
+                  onClose={() => setError(null)}
+                  disabled={isAnalyzing}
+                />
               )}
             </div>
           </section>

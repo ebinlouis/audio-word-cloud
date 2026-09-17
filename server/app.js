@@ -52,6 +52,15 @@ app.use((err, req, res, next) => {
 
 const server = app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
+
+  const apiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY;
+  if (!apiKey) {
+    console.warn('\n⚠️  [AI Warning]: GEMINI_API_KEY is missing in server/.env. Audio analysis will fail until configured.');
+  } else {
+    const masked = apiKey.length > 8 ? `${apiKey.substring(0, 6)}...${apiKey.substring(apiKey.length - 4)}` : '***';
+    const modelName = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+    console.log(`🤖 [AI Config]: Gemini API key loaded (${masked}) using model [${modelName}].`);
+  }
 });
 
 server.keepAliveTimeout = 120000;

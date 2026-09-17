@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node --watch app.js",
     "start": "node app.js",
+    "test:api": "node test-gemini.js",
     "build:client": "npm --prefix ../client run build"
   },
   "dependencies": {

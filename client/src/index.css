@@ -56,6 +56,7 @@
 *::before,
 *::after {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html,
@@ -67,6 +68,8 @@ body {
   background-color: var(--bg-base);
   color: var(--text-secondary);
   overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
 }
 
 #root {
@@ -76,6 +79,26 @@ body {
   background-color: var(--bg-base);
 }
 
+/* Remove mobile blue tap highlight and accidental callouts across interactive elements */
+button,
+a,
+input,
+select,
+textarea,
+label,
+[role="button"],
+[role="tab"],
+[tabindex],
+.dropzone-card,
+.segmented-tab {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+/* Prevent unwanted focus rings on mobile touch / mouse tap while preserving accessibility for keyboard navigation */
+:focus:not(:focus-visible) {
+  outline: none;
+}
 
 button:focus-visible,
 input:focus-visible,
@@ -238,12 +261,20 @@ input:focus-visible,
   align-items: center;
   text-align: center;
   cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
   transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.1s ease;
 }
 
 .dropzone-card:hover {
   border-color: var(--accent-primary);
   background-color: rgba(99, 102, 241, 0.04);
+}
+
+.dropzone-card:active {
+  transform: scale(0.995);
+  background-color: rgba(99, 102, 241, 0.06);
 }
 
 .dropzone-card.dragging {
@@ -1575,6 +1606,20 @@ input:focus-visible,
 
 
 
+.error-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(9, 13, 22, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 16px;
+  animation: modalFadeIn 0.2s ease-out;
+}
+
 .studio-error-wrapper {
   margin-top: 18px;
 }
@@ -1586,6 +1631,48 @@ input:focus-visible,
   padding: 16px 20px;
   text-align: left;
   transition: all 0.2s ease-in-out;
+}
+
+.error-card-wrapper.modal-popup {
+  width: 100%;
+  max-width: 440px;
+  background-color: var(--bg-card);
+  border: 1px solid rgba(244, 63, 94, 0.35);
+  border-radius: var(--radius-xl);
+  padding: 22px 24px;
+  box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(244, 63, 94, 0.15);
+  animation: modalScaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.error-card-wrapper.modal-popup.high-demand {
+  border-color: rgba(245, 158, 11, 0.4);
+  box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(245, 158, 11, 0.2);
+}
+
+.error-modal-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-xs);
+  transition: color 0.15s ease, background-color 0.15s ease;
+  margin-left: auto;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.error-modal-close-btn:hover {
+  color: var(--text-primary);
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.error-modal-close-btn svg {
+  width: 18px;
+  height: 18px;
 }
 
 
@@ -1755,14 +1842,15 @@ input:focus-visible,
   align-items: center;
   justify-content: space-between;
   margin-bottom: 20px;
-  gap: 16px;
-  flex-wrap: wrap;
+  gap: 12px;
+  width: 100%;
 }
 
 .workspace-header-title-group {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 
 .workspace-title {
@@ -1771,13 +1859,23 @@ input:focus-visible,
   font-weight: 700;
   letter-spacing: -0.4px;
   color: var(--text-primary);
+  white-space: nowrap;
 }
 
 .workspace-header-actions {
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.btn-workspace-text-short {
+  display: none;
+}
+
+.btn-workspace-text-full {
+  display: inline;
 }
 
 .workspace-tag {
@@ -2243,8 +2341,9 @@ input:focus-visible,
 .btn-workspace-new {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 6px 13px;
+  padding: 7px 14px;
   background-color: var(--bg-card);
   border: 1px solid var(--border-card);
   border-radius: var(--radius-sm);
@@ -2252,14 +2351,23 @@ input:focus-visible,
   font-size: 12.5px;
   font-weight: 600;
   cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
   transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
   box-shadow: var(--shadow-sm);
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .btn-workspace-new:hover:not(:disabled) {
   background-color: var(--bg-card-hover);
   border-color: rgba(255, 255, 255, 0.25);
+}
+
+.btn-workspace-new:active:not(:disabled) {
+  transform: scale(0.97);
+  background-color: var(--bg-card-hover);
 }
 
 .btn-workspace-new .btn-icon {
@@ -2613,6 +2721,45 @@ input:focus-visible,
 
 
 @media (max-width: 480px) {
+  .workspace-header {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    width: 100%;
+    margin-bottom: 16px;
+  }
+
+  .workspace-title {
+    font-size: 17px;
+  }
+
+  .workspace-tag {
+    display: none;
+  }
+
+  .workspace-header-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
+  .btn-workspace-text-full {
+    display: none;
+  }
+
+  .btn-workspace-text-short {
+    display: inline;
+  }
+
+  .btn-workspace-new {
+    padding: 6px 11px;
+    font-size: 12px;
+    gap: 5px;
+  }
+
   .analysis-summary-grid {
     grid-template-columns: 1fr;
     gap: 8px;
@@ -2704,12 +2851,27 @@ input:focus-visible,
     padding: 6px;
   }
 
-  .loading-modal-overlay {
+  .loading-modal-overlay,
+  .error-modal-overlay {
     padding: 12px;
   }
 
-  .analysis-progress-card.modal-popup {
-    border-radius: var(--radius-md);
+  .analysis-progress-card.modal-popup,
+  .error-card-wrapper.modal-popup {
+    border-radius: var(--radius-lg);
+    padding: 18px 16px;
+  }
+
+  .error-actions-group {
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .btn-error-retry,
+  .btn-error-reset {
+    width: 100%;
+    justify-content: center;
   }
 
   .progress-card-content {

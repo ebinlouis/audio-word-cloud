@@ -1,39 +1,30 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-async function generateContentWithRetry(model, content, maxRetries = 2) {
-  let attempt = 0;
-  while (true) {
-    try {
-      return await model.generateContent(content);
-    } catch (err) {
-      attempt++;
-      console.error(`[Google Gemini Error - Transcription Attempt ${attempt}]:`, err.message || err);
-      const errMsg = (err.message || '').toLowerCase();
-      const isHighDemand =
-        errMsg.includes('503') ||
-        errMsg.includes('429') ||
-        errMsg.includes('high demand') ||
-        errMsg.includes('temporarily unavailable') ||
-        errMsg.includes('resource_exhausted') ||
-        errMsg.includes('overloaded');
-
-      if (isHighDemand && attempt <= maxRetries) {
-        const delayMs = attempt * 1500;
-        console.warn(`[AI Transcription] Gemini experiencing high demand/rate-limit (503/429). Retrying in ${delayMs}ms (Attempt ${attempt}/${maxRetries})...`);
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
-        continue;
-      }
-
-      if (isHighDemand) {
-        const error = new Error('The AI model is currently experiencing high demand or quota limit. Please wait a moment and try again.');
-        error.code = 'AI_HIGH_DEMAND';
-        error.status = 503;
-        throw error;
-      }
-
-      throw err;
-    }
+function parseGeminiError(err) {
+  const errMsg = (err?.message || String(err || '')).toLowerCase();
+  
+  if (errMsg.includes('403') || errMsg.includes('api_key_invalid') || errMsg.includes('api key not valid')) {
+    const error = new Error('The Gemini API key is invalid or unauthorized. Please check your server configuration.');
+    error.code = 'AI_INVALID_KEY';
+    error.status = 403;
+    return error;
   }
+
+  if (errMsg.includes('429') || errMsg.includes('resource_exhausted') || errMsg.includes('quota')) {
+    const error = new Error('Google Gemini rate limit or free tier quota reached. Please wait a moment and try again.');
+    error.code = 'AI_QUOTA_EXCEEDED';
+    error.status = 429;
+    return error;
+  }
+
+  if (errMsg.includes('503') || errMsg.includes('high demand') || errMsg.includes('overloaded') || errMsg.includes('temporarily unavailable')) {
+    const error = new Error('This model is currently experiencing high demand. Please wait a moment and try again.');
+    error.code = 'AI_HIGH_DEMAND';
+    error.status = 503;
+    return error;
+  }
+
+  return null;
 }
 
 export async function transcribeAudio(file) {
@@ -53,32 +44,34 @@ export async function transcribeAudio(file) {
     throw error;
   }
 
+  const modelName = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+  const genAI = new GoogleGenerativeAI(apiKey);
+
+  const audioPart = {
+    inlineData: {
+      data: file.buffer.toString('base64'),
+      mimeType: file.mimetype || 'audio/mp3'
+    }
+  };
+
+  const prompt =
+    'Transcribe all spoken words in this audio accurately. Return only the raw transcription text without any markdown, explanations, or metadata.';
+
   try {
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
     const model = genAI.getGenerativeModel({ model: modelName });
-
-    const audioPart = {
-      inlineData: {
-        data: file.buffer.toString('base64'),
-        mimeType: file.mimetype || 'audio/mp3'
-      }
-    };
-
-    const prompt =
-      'Transcribe all spoken words in this audio accurately. Return only the raw transcription text without any markdown, explanations, or metadata.';
-
-    const result = await generateContentWithRetry(model, [audioPart, prompt]);
+    const result = await model.generateContent([audioPart, prompt]);
     const response = await result.response;
     const transcriptText = response.text().trim();
-
     return transcriptText || 'No clear speech detected in the audio.';
   } catch (err) {
-    if (err.code) throw err;
-    console.error('AI Transcription Error:', err.message || err);
-    const error = new Error('Failed to transcribe audio. The AI service may be temporarily unavailable.');
-    error.code = 'TRANSCRIPTION_FAILED';
-    error.status = 500;
-    throw error;
+    console.error(`[Transcription] Model [${modelName}] failed:`, err.message || err);
+    const parsed = parseGeminiError(err);
+    if (parsed) {
+      throw parsed;
+    }
+    const finalError = new Error('Failed to transcribe audio. The AI service may be temporarily unavailable.');
+    finalError.code = 'TRANSCRIPTION_FAILED';
+    finalError.status = 500;
+    throw finalError;
   }
 }

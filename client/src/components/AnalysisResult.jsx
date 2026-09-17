@@ -133,7 +133,8 @@ export default function AnalysisResult({ result, onReset, audioDuration = null, 
                     <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
                     <path d="M3 21v-5h5" />
                   </svg>
-                  <span>Start New Analysis</span>
+                  <span className="btn-workspace-text-full">Start New Analysis</span>
+                  <span className="btn-workspace-text-short">New Analysis</span>
                 </>
               )}
             </button>

@@ -28,3 +28,5 @@ yarn-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
+test-gemini.js

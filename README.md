@@ -14,14 +14,14 @@ A full-stack web app for mentors and educators to analyze mentorship-session aud
 - Remove words and re-render the cloud without running AI again.
 - Download the word cloud as PNG.
 - View, copy, and download the transcript.
-- Past analyses are stored temporarily in Node.js server memory.
+- Past analyses are stored in temporary Node.js server memory (RAM) for instant review without re-running AI.
 - Handles loading, microphone permission, validation, and API errors.
 - Responsive for desktop and mobile screens.
 
 ### Deliberate limitations
 
-- Past analyses are stored only in server memory and are lost when the server restarts or redeploys.
-- Audio is processed in memory and is not permanently stored.
+- Past analyses are stored only in temporary server memory (RAM) and reset whenever the server restarts or redeploys.
+- Audio is processed in memory buffers and is not permanently stored or retained.
 - No user accounts or database were implemented.
 
 ## 2. How to Run Locally
@@ -84,9 +84,9 @@ The API key is stored in the server environment and is never exposed to the fron
 
 Used React and Vite for the frontend and Node.js/Express for the backend because they provide a simple full-stack structure suitable for the application.
 
-### In-memory processing and history
+### In-memory processing and temporary history
 
-Audio is handled using memory buffers rather than permanent file storage. Past analyses are also kept temporarily in server memory, avoiding database setup for this assignment.
+Audio is handled using in-memory buffers rather than permanent file storage. Past session analyses (transcripts, extracted keywords, and metadata) are stored temporarily in Node.js server memory (with a 20-item safeguard limit), allowing instant review during the active session without requiring database setup or disk persistence.
 
 ### AI-weighted concepts instead of frequency counting
 
