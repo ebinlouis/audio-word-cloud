@@ -15,7 +15,8 @@ A full-stack web app for mentors and educators to analyze mentorship-session aud
 - Download the word cloud as PNG.
 - View, copy, and download the transcript.
 - Past analyses are stored in temporary Node.js server memory (RAM) for instant review without re-running AI.
-- Handles loading, microphone permission, validation, and API errors.
+- Smart resume & instant retry: temporary in-memory session caching avoids re-uploading audio on transient AI errors and resumes from the exact failure point.
+- Handles loading, microphone permission, validation, and API rate limit / high demand errors.
 - Responsive for desktop and mobile screens.
 
 ### Deliberate limitations
@@ -34,7 +35,7 @@ A full-stack web app for mentors and educators to analyze mentorship-session aud
 ### Install
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/ebinlouis/audio-word-cloud.git
 cd audio-word-cloud
 npm run install-all
 ```
@@ -53,6 +54,11 @@ Add:
 PORT=5005
 GEMINI_API_KEY=your_gemini_api_key_here
 GEMINI_MODEL=gemini-3.6-flash
+```
+
+*(Optional)* You can test your Gemini API key and model availability at any time by running:
+```bash
+node server/test-gemini.js
 ```
 
 ### Run
