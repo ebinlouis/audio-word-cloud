@@ -1,53 +1,88 @@
 /**
- * Sends an audio file to the backend analysis endpoint.
+ * Sends an audio file to the backend analysis endpoint with optional real upload progress tracking.
  * @param {File|Blob} file - The audio file or blob to analyze.
+ * @param {((progress: number) => void)} [onUploadProgress] - Optional callback for upload progress (0-100).
  * @returns {Promise<Object>} The parsed JSON analysis response.
  */
-export async function analyzeAudio(file) {
+export function analyzeAudio(file, onUploadProgress) {
   if (!file) {
-    throw new Error('Audio file is required.');
+    return Promise.reject(new Error('Audio file is required.'));
   }
 
-  // Create FormData and append audio with field name 'audio'
-  const formData = new FormData();
-  formData.append('audio', file);
+  return new Promise((resolve, reject) => {
+    const formData = new FormData();
+    formData.append('audio', file);
 
-  let response;
-  try {
-    // Note: Do not set Content-Type header so browser adds multipart boundary
-    response = await fetch('/api/analyze', {
-      method: 'POST',
-      body: formData
-    });
-  } catch {
-    throw new Error(
-      'Unable to reach the analysis service. Please check your connection and try again.'
-    );
-  }
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/api/analyze');
 
-  // Handle non-2xx HTTP responses
-  if (!response.ok) {
-    let errorMessage = 'This audio file could not be processed. Please try another audio file.';
-    let errorCode = response.status === 503 ? 'AI_HIGH_DEMAND' : 'ANALYSIS_FAILED';
-    try {
-      const errorData = await response.json();
-      if (errorData && typeof errorData.error === 'string' && errorData.error.trim()) {
-        errorMessage = errorData.error;
-      }
-      if (errorData && errorData.code) {
-        errorCode = errorData.code;
-      }
-    } catch {
-      if (response.status >= 400 && response.status < 500) {
-        errorMessage = 'This audio file could not be processed. Please try another audio file.';
-      }
+    // Real upload progress tracking
+    if (xhr.upload && typeof onUploadProgress === 'function') {
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable && event.total > 0) {
+          const percent = Math.min(100, Math.max(0, Math.round((event.loaded / event.total) * 100)));
+          onUploadProgress(percent);
+        }
+      };
+
+      xhr.upload.onload = () => {
+        onUploadProgress(100);
+      };
     }
-    const error = new Error(errorMessage);
-    error.code = errorCode;
-    error.status = response.status;
-    throw error;
-  }
 
-  // Return the parsed JSON response
-  return await response.json();
+    xhr.onload = () => {
+      let responseData = null;
+      try {
+        responseData = JSON.parse(xhr.responseText);
+      } catch {
+        responseData = null;
+      }
+
+      if (xhr.status >= 200 && xhr.status < 300) {
+        if (responseData) {
+          resolve(responseData);
+        } else {
+          resolve({});
+        }
+        return;
+      }
+
+      // Non-2xx error handling
+      let errorMessage = 'This audio file could not be processed. Please try another audio file.';
+      let errorCode = xhr.status === 503 ? 'AI_HIGH_DEMAND' : 'ANALYSIS_FAILED';
+
+      if (responseData && typeof responseData.error === 'string' && responseData.error.trim()) {
+        errorMessage = responseData.error;
+      }
+      if (responseData && responseData.code) {
+        errorCode = responseData.code;
+      } else if (xhr.status === 503 || (errorMessage && errorMessage.toLowerCase().includes('high demand'))) {
+        errorCode = 'AI_HIGH_DEMAND';
+      }
+
+      const error = new Error(errorMessage);
+      error.code = errorCode;
+      error.status = xhr.status;
+      reject(error);
+    };
+
+    xhr.onerror = () => {
+      reject(
+        new Error(
+          'Unable to reach the analysis service. Please check your connection and try again.'
+        )
+      );
+    };
+
+    xhr.ontimeout = () => {
+      reject(
+        new Error(
+          'The request took longer than expected. Please check your connection and try again.'
+        )
+      );
+    };
+
+    xhr.send(formData);
+  });
 }
+

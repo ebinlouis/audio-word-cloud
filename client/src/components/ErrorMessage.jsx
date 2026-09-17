@@ -77,16 +77,16 @@ export default function ErrorMessage({ message, code, onRetry, onReset, disabled
         <div className="error-title-group">
           <div className="error-heading-row">
             <h4 className="error-heading">
-              {isHighDemand ? 'AI Model Experiencing High Demand' : 'Analysis Error'}
+              {isHighDemand ? "Service Temporarily Busy" : "Analysis couldn't be completed"}
             </h4>
             {isHighDemand && (
-              <span className="demand-badge">503 High Traffic</span>
+              <span className="demand-badge">High Traffic</span>
             )}
           </div>
           <p className="error-text">
             {isHighDemand
-              ? 'The Google Gemini AI service is currently handling high traffic spikes. Demand spikes are usually brief. Please click "Try Again" in a moment.'
-              : rawMessage}
+              ? 'The automated analysis service is currently experiencing a temporary traffic spike. Please wait a few moments and click "Try Again".'
+              : rawMessage || "We couldn't process this recording right now. Please try again or choose another file."}
           </p>
         </div>
       </div>

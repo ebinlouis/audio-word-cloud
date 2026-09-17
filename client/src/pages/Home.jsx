@@ -12,6 +12,9 @@ export default function Home() {
   const [file, setFile] = useState(null);
   const [audioDuration, setAudioDuration] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [sessionKey, setSessionKey] = useState(0);
@@ -35,6 +38,9 @@ export default function Home() {
     setResult(null);
     setError(null);
     setIsAnalyzing(false);
+    setIsUploading(false);
+    setUploadProgress(0);
+    setIsCompleted(false);
     setIsClearing(false);
     setRetryStatus({ isRetrying: false, attempt: 1, maxAttempts: 5 });
     setSessionKey((prev) => prev + 1);
@@ -53,6 +59,9 @@ export default function Home() {
 
     const MAX_RETRIES = 5;
     setIsAnalyzing(true);
+    setIsUploading(true);
+    setUploadProgress(0);
+    setIsCompleted(false);
     setError(null);
     setResult(null);
     setRetryStatus({ isRetrying: false, attempt: 1, maxAttempts: MAX_RETRIES });
@@ -60,16 +69,23 @@ export default function Home() {
     let currentAttempt = 1;
     let analysisSuccess = false;
     let lastError = null;
+    let finalResponse = null;
 
     while (currentAttempt <= MAX_RETRIES && !analysisSuccess) {
       try {
-        const response = await analyzeAudio(file);
-        setResult(response);
+        const response = await analyzeAudio(file, (percent) => {
+          setUploadProgress(percent);
+          if (percent >= 100) {
+            setIsUploading(false);
+          }
+        });
+        finalResponse = response;
         analysisSuccess = true;
         setRetryStatus({ isRetrying: false, attempt: 1, maxAttempts: MAX_RETRIES });
         break;
       } catch (err) {
         lastError = err;
+        setIsUploading(false);
         const isHighDemand =
           err.code === 'AI_HIGH_DEMAND' ||
           err.status === 503 ||
@@ -94,7 +110,15 @@ export default function Home() {
       }
     }
 
-    if (!analysisSuccess && lastError) {
+    if (analysisSuccess && finalResponse) {
+      setIsCompleted(true);
+      // Brief gentle pause so mentor sees "✓ Analysis complete" before viewing results
+      await new Promise((resolve) => setTimeout(resolve, 650));
+      setResult(finalResponse);
+      setIsAnalyzing(false);
+      setIsCompleted(false);
+      setRetryStatus({ isRetrying: false, attempt: 1, maxAttempts: MAX_RETRIES });
+    } else if (lastError) {
       const isHighDemand =
         lastError.code === 'AI_HIGH_DEMAND' ||
         lastError.status === 503 ||
@@ -108,10 +132,10 @@ export default function Home() {
         status: lastError.status || 500
       });
       setResult(null);
+      setIsAnalyzing(false);
+      setIsCompleted(false);
+      setRetryStatus({ isRetrying: false, attempt: 1, maxAttempts: MAX_RETRIES });
     }
-
-    setIsAnalyzing(false);
-    setRetryStatus({ isRetrying: false, attempt: 1, maxAttempts: MAX_RETRIES });
   };
 
   const handleModeChange = (mode) => {
@@ -257,11 +281,13 @@ export default function Home() {
                 )}
               </div>
 
-              {/* 11. Loading State */}
+              {/* 11. Analysis Progress Modal */}
               {isAnalyzing && (
                 <div className="studio-progress-wrapper">
                   <AnalysisProgress
-                    message="Transcribing and analyzing audio..."
+                    uploadProgress={uploadProgress}
+                    isUploading={isUploading}
+                    isCompleted={isCompleted}
                     retryStatus={retryStatus}
                   />
                 </div>

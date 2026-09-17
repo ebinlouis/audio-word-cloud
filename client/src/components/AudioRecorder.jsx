@@ -3,9 +3,9 @@ import ErrorMessage from './ErrorMessage';
 
 /**
  * AudioRecorder component handles in-browser microphone capture,
- * pause/resume, discard, recording timer, track cleanup, and robust error handling.
+ * pause/resume, playback while paused, discard, recording timer, track cleanup, and robust error handling.
  *
- * @param {{ onAudioRecorded: (file: File | null) => void, disabled?: boolean }} props
+ * @param {{ onAudioRecorded: (file: File | null, duration?: number | null) => void, disabled?: boolean }} props
  */
 export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
   const [isRecording, setIsRecording] = useState(false);
@@ -13,10 +13,46 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [error, setError] = useState(null);
 
+  // Microphone selection states
+  const [audioDevices, setAudioDevices] = useState([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState('');
+  const [isMicDropdownOpen, setIsMicDropdownOpen] = useState(false);
+
+  // Paused audio preview playback states
+  const [pausedAudioUrl, setPausedAudioUrl] = useState(null);
+  const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
+  const [previewCurrentTime, setPreviewCurrentTime] = useState(0);
+  const [previewDuration, setPreviewDuration] = useState(0);
+
   const mediaRecorderRef = useRef(null);
   const streamRef = useRef(null);
   const timerRef = useRef(null);
   const chunksRef = useRef([]);
+  const recordingSecondsRef = useRef(0);
+  const mimeTypeRef = useRef('audio/webm');
+  const pausedAudioUrlRef = useRef(null);
+  const previewAudioRef = useRef(null);
+  const dropdownRef = useRef(null);
+
+  // Enumerate available microphone devices
+  const populateAudioDevices = async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const audioInputs = devices.filter((d) => d.kind === 'audioinput');
+      const uniqueInputs = [];
+      const seenIds = new Set();
+      for (const d of audioInputs) {
+        if (!seenIds.has(d.deviceId)) {
+          seenIds.add(d.deviceId);
+          uniqueInputs.push(d);
+        }
+      }
+      setAudioDevices(uniqueInputs);
+    } catch (e) {
+      console.warn('Could not enumerate audio input devices:', e);
+    }
+  };
 
   // Clean up timer and media stream tracks
   const cleanupRecording = () => {
@@ -30,20 +66,102 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
     }
   };
 
+  // Clean up paused preview audio object URL and playback
+  const cleanupPreviewAudio = () => {
+    if (previewAudioRef.current) {
+      previewAudioRef.current.pause();
+    }
+    if (pausedAudioUrlRef.current) {
+      URL.revokeObjectURL(pausedAudioUrlRef.current);
+      pausedAudioUrlRef.current = null;
+    }
+    setPausedAudioUrl(null);
+    setIsPreviewPlaying(false);
+    setPreviewCurrentTime(0);
+    setPreviewDuration(0);
+  };
+
   useEffect(() => {
+    let active = true;
+
+    const loadDevices = async () => {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const audioInputs = devices.filter((d) => d.kind === 'audioinput');
+        const uniqueInputs = [];
+        const seenIds = new Set();
+        for (const d of audioInputs) {
+          if (!seenIds.has(d.deviceId)) {
+            seenIds.add(d.deviceId);
+            uniqueInputs.push(d);
+          }
+        }
+        if (active) {
+          setAudioDevices(uniqueInputs);
+        }
+      } catch (e) {
+        console.warn('Could not enumerate audio input devices:', e);
+      }
+    };
+
+    loadDevices();
+
+    const handleDeviceChange = () => {
+      loadDevices();
+    };
+
+    if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+      navigator.mediaDevices.addEventListener('devicechange', handleDeviceChange);
+    }
+
     return () => {
+      active = false;
       cleanupRecording();
+      cleanupPreviewAudio();
+      if (navigator.mediaDevices && navigator.mediaDevices.removeEventListener) {
+        navigator.mediaDevices.removeEventListener('devicechange', handleDeviceChange);
+      }
     };
   }, []);
 
+  // Handle outside click and Escape key for custom microphone dropdown
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsMicDropdownOpen(false);
+      }
+    };
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setIsMicDropdownOpen(false);
+      }
+    };
+    if (isMicDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isMicDropdownOpen]);
+
+  const selectedDevice = audioDevices.find((d) => d.deviceId === selectedDeviceId);
+  const currentMicLabel = selectedDevice
+    ? (selectedDevice.label || 'Selected Microphone')
+    : 'Default System Microphone';
+
   const formatTime = (totalSeconds) => {
-    const mins = Math.floor(totalSeconds / 60);
-    const secs = totalSeconds % 60;
+    const safeSecs = Math.max(0, typeof totalSeconds === 'number' && !isNaN(totalSeconds) ? Math.floor(totalSeconds) : 0);
+    const mins = Math.floor(safeSecs / 60);
+    const secs = safeSecs % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   const startRecording = async () => {
     setError(null);
+    cleanupPreviewAudio();
 
     // 1. Check browser support for MediaDevices and MediaRecorder
     if (
@@ -58,9 +176,28 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
     }
 
     try {
-      // 2. Request microphone stream
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // 2. Request microphone stream with selected device constraint if specified
+      const audioConstraints = selectedDeviceId
+        ? { deviceId: { exact: selectedDeviceId } }
+        : true;
+
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
+      } catch (deviceErr) {
+        // If specific deviceId fails, fallback to default audio
+        if (selectedDeviceId) {
+          console.warn('Selected microphone unavailable, falling back to default:', deviceErr);
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        } else {
+          throw deviceErr;
+        }
+      }
+
       streamRef.current = stream;
+
+      // Re-populate device labels now that mic permission is granted
+      populateAudioDevices();
 
       // 3. Determine best supported recording MIME type
       let mimeType = 'audio/webm';
@@ -69,6 +206,7 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
       } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
         mimeType = 'audio/mp4';
       }
+      mimeTypeRef.current = mimeType;
 
       const mediaRecorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
@@ -81,6 +219,7 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
       };
 
       mediaRecorder.onstop = () => {
+        cleanupPreviewAudio();
         if (chunksRef.current.length === 0) {
           cleanupRecording();
           setIsRecording(false);
@@ -94,12 +233,17 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
           type: mimeType
         });
 
+        const finalDuration = recordingSecondsRef.current || 0;
+        if (finalDuration > 0) {
+          recordedFile.duration = finalDuration;
+        }
+
         cleanupRecording();
         setIsRecording(false);
         setIsPaused(false);
 
         if (onAudioRecorded) {
-          onAudioRecorded(recordedFile);
+          onAudioRecorded(recordedFile, finalDuration > 0 ? finalDuration : null);
         }
       };
 
@@ -107,13 +251,19 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
       setIsRecording(true);
       setIsPaused(false);
       setRecordingSeconds(0);
+      recordingSecondsRef.current = 0;
 
       // Start elapsed timer
       timerRef.current = setInterval(() => {
-        setRecordingSeconds((prev) => prev + 1);
+        setRecordingSeconds((prev) => {
+          const next = prev + 1;
+          recordingSecondsRef.current = next;
+          return next;
+        });
       }, 1000);
     } catch (err) {
       cleanupRecording();
+      cleanupPreviewAudio();
       setIsRecording(false);
       setIsPaused(false);
 
@@ -135,6 +285,8 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
   const pauseRecording = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       try {
+        // Request immediate buffer flush before pausing
+        mediaRecorderRef.current.requestData();
         mediaRecorderRef.current.pause();
       } catch (err) {
         console.error('Error pausing recorder:', err);
@@ -144,10 +296,28 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
         timerRef.current = null;
       }
       setIsPaused(true);
+
+      // Create preview blob from audio recorded so far
+      setTimeout(() => {
+        if (chunksRef.current && chunksRef.current.length > 0) {
+          const mimeType = mimeTypeRef.current || 'audio/webm';
+          const previewBlob = new Blob(chunksRef.current, { type: mimeType });
+          if (pausedAudioUrlRef.current) {
+            URL.revokeObjectURL(pausedAudioUrlRef.current);
+          }
+          const url = URL.createObjectURL(previewBlob);
+          pausedAudioUrlRef.current = url;
+          setPausedAudioUrl(url);
+          setPreviewCurrentTime(0);
+          setIsPreviewPlaying(false);
+          setPreviewDuration(recordingSecondsRef.current || 0);
+        }
+      }, 50);
     }
   };
 
   const resumeRecording = () => {
+    cleanupPreviewAudio();
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'paused') {
       try {
         mediaRecorderRef.current.resume();
@@ -155,19 +325,25 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
         console.error('Error resuming recorder:', err);
       }
       timerRef.current = setInterval(() => {
-        setRecordingSeconds((prev) => prev + 1);
+        setRecordingSeconds((prev) => {
+          const next = prev + 1;
+          recordingSecondsRef.current = next;
+          return next;
+        });
       }, 1000);
       setIsPaused(false);
     }
   };
 
   const stopRecording = () => {
+    cleanupPreviewAudio();
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
     }
   };
 
   const discardRecording = () => {
+    cleanupPreviewAudio();
     chunksRef.current = [];
     if (mediaRecorderRef.current) {
       // Detach onstop handler to prevent emitting file
@@ -184,6 +360,27 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
     setIsRecording(false);
     setIsPaused(false);
     setRecordingSeconds(0);
+    recordingSecondsRef.current = 0;
+  };
+
+  // Paused playback controls
+  const togglePreviewPlayPause = () => {
+    if (!previewAudioRef.current) return;
+    if (isPreviewPlaying) {
+      previewAudioRef.current.pause();
+    } else {
+      previewAudioRef.current.play().catch((err) => {
+        console.warn('Paused preview playback failed:', err);
+      });
+    }
+  };
+
+  const handlePreviewSeek = (e) => {
+    const newTime = parseFloat(e.target.value);
+    setPreviewCurrentTime(newTime);
+    if (previewAudioRef.current) {
+      previewAudioRef.current.currentTime = newTime;
+    }
   };
 
   return (
@@ -207,7 +404,135 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
                 <line x1="8" y1="22" x2="16" y2="22" />
               </svg>
             </div>
-            <p className="recorder-prompt">Click to record high quality audio from your microphone</p>
+            <p className="recorder-prompt">Select microphone and click record</p>
+
+            {/* Custom Themed Microphone Selection Dropdown */}
+            <div className="mic-selector-row" ref={dropdownRef}>
+              <button
+                type="button"
+                id="mic-device-select-button"
+                className={`mic-custom-select-trigger ${isMicDropdownOpen ? 'open' : ''}`}
+                onClick={() => !disabled && setIsMicDropdownOpen((prev) => !prev)}
+                disabled={disabled}
+                aria-haspopup="listbox"
+                aria-expanded={isMicDropdownOpen}
+                aria-label="Select audio input microphone"
+                title="Choose input microphone"
+              >
+                <div className="mic-trigger-left">
+                  <span className="mic-trigger-icon-box" aria-hidden="true">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className="mic-select-icon"
+                    >
+                      <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                    </svg>
+                  </span>
+                  <span className="mic-selected-label">
+                    {currentMicLabel}
+                  </span>
+                </div>
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className={`mic-select-chevron ${isMicDropdownOpen ? 'rotated' : ''}`}
+                  aria-hidden="true"
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+
+              {isMicDropdownOpen && (
+                <div
+                  className="mic-custom-dropdown-menu"
+                  role="listbox"
+                  aria-labelledby="mic-device-select-button"
+                >
+                  <div className="mic-dropdown-header">
+                    <span>Input Microphones</span>
+                  </div>
+
+                  {/* Default Microphone Option */}
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={selectedDeviceId === ''}
+                    className={`mic-dropdown-item ${selectedDeviceId === '' ? 'active' : ''}`}
+                    onClick={() => {
+                      setSelectedDeviceId('');
+                      setIsMicDropdownOpen(false);
+                    }}
+                  >
+                    <div className="mic-item-content">
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className="mic-item-icon"
+                        aria-hidden="true"
+                      >
+                        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                      </svg>
+                      <span className="mic-item-label">Default System Microphone</span>
+                    </div>
+                    {selectedDeviceId === '' && (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="mic-item-check" aria-hidden="true">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                  </button>
+
+                  {/* Enumerated Device Options */}
+                  {audioDevices.map((device, index) => {
+                    const isSelected = selectedDeviceId === device.deviceId;
+                    return (
+                      <button
+                        key={device.deviceId || index}
+                        type="button"
+                        role="option"
+                        aria-selected={isSelected}
+                        className={`mic-dropdown-item ${isSelected ? 'active' : ''}`}
+                        onClick={() => {
+                          setSelectedDeviceId(device.deviceId);
+                          setIsMicDropdownOpen(false);
+                        }}
+                      >
+                        <div className="mic-item-content">
+                          <svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            className="mic-item-icon"
+                            aria-hidden="true"
+                          >
+                            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                          </svg>
+                          <span className="mic-item-label" title={device.label || `Microphone ${index + 1}`}>
+                            {device.label || `Microphone ${index + 1}`}
+                          </span>
+                        </div>
+                        {isSelected && (
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="mic-item-check" aria-hidden="true">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
             <button
               type="button"
               className="btn-record"
@@ -238,6 +563,106 @@ export default function AudioRecorder({ onAudioRecorded, disabled = false }) {
             <div className="recording-timer" aria-live="off">
               {formatTime(recordingSeconds)}
             </div>
+
+            {/* In-recorder Audio Preview while Paused */}
+            {isPaused && (
+              <div className="recorder-paused-preview" role="region" aria-label="Playback recorded audio snippet">
+                <div className="paused-preview-badge">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="paused-badge-icon" aria-hidden="true">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
+                  </svg>
+                  <span>Listen to recording so far</span>
+                </div>
+
+                {pausedAudioUrl ? (
+                  <>
+                    <audio
+                      ref={previewAudioRef}
+                      src={pausedAudioUrl}
+                      preload="auto"
+                      onTimeUpdate={() => {
+                        if (previewAudioRef.current) {
+                          setPreviewCurrentTime(previewAudioRef.current.currentTime);
+                        }
+                      }}
+                      onLoadedMetadata={() => {
+                        if (previewAudioRef.current) {
+                          const dur = previewAudioRef.current.duration;
+                          if (typeof dur === 'number' && !isNaN(dur) && isFinite(dur) && dur > 0) {
+                            setPreviewDuration(dur);
+                          }
+                        }
+                      }}
+                      onEnded={() => {
+                        setIsPreviewPlaying(false);
+                        setPreviewCurrentTime(0);
+                      }}
+                      onPlay={() => setIsPreviewPlaying(true)}
+                      onPause={() => setIsPreviewPlaying(false)}
+                      className="sr-only"
+                    />
+
+                    <div className="paused-preview-player">
+                      <button
+                        type="button"
+                        className="btn-paused-playpause"
+                        onClick={togglePreviewPlayPause}
+                        aria-label={isPreviewPlaying ? 'Pause audio playback' : 'Play recorded snippet'}
+                        title={isPreviewPlaying ? 'Pause playback' : 'Play recording'}
+                      >
+                        {isPreviewPlaying ? (
+                          <svg viewBox="0 0 24 24" fill="currentColor" className="paused-player-icon" aria-hidden="true">
+                            <rect x="6" y="4" width="4" height="16" rx="1" />
+                            <rect x="14" y="4" width="4" height="16" rx="1" />
+                          </svg>
+                        ) : (
+                          <svg viewBox="0 0 24 24" fill="currentColor" className="paused-player-icon" aria-hidden="true">
+                            <polygon points="6 4 20 12 6 20 6 4" />
+                          </svg>
+                        )}
+                      </button>
+
+                      <div className="paused-time-text current">
+                        {formatTime(previewCurrentTime)}
+                      </div>
+
+                      <div className="paused-scrubber-container">
+                        <input
+                          type="range"
+                          min="0"
+                          max={previewDuration || recordingSeconds || 1}
+                          step="0.1"
+                          value={previewCurrentTime}
+                          onChange={handlePreviewSeek}
+                          className="paused-scrubber-input"
+                          aria-label="Seek snippet playback position"
+                        />
+                        <div
+                          className="paused-scrubber-track-filled"
+                          style={{
+                            width: `${Math.min(
+                              Math.max(
+                                ((previewCurrentTime / (previewDuration || recordingSeconds || 1)) * 100),
+                                0
+                              ),
+                              100
+                            )}%`
+                          }}
+                          aria-hidden="true"
+                        />
+                      </div>
+
+                      <div className="paused-time-text total">
+                        {formatTime(previewDuration || recordingSeconds)}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="paused-loading-text">Preparing playback...</div>
+                )}
+              </div>
+            )}
 
             {/* Recording Controls: Pause/Resume, Stop/Finish, and Discard */}
             <div className="recording-controls-toolbar">

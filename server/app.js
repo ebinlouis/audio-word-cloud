@@ -32,8 +32,13 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
+
+// Configure server timeouts for long-running AI transcription requests (up to 3 minutes)
+server.keepAliveTimeout = 120000;
+server.headersTimeout = 125000;
+server.timeout = 180000;
 
 export default app;
