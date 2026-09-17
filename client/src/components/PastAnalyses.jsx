@@ -115,19 +115,6 @@ export default function PastAnalyses({ onSelectAnalysis, onBackToStudio }) {
             Review past session transcripts and word clouds stored during this server session
           </p>
         </div>
-
-        <button
-          type="button"
-          className="btn-secondary-clear"
-          onClick={onBackToStudio}
-          aria-label="Back to Audio Input Studio"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="btn-icon" aria-hidden="true">
-            <line x1="19" y1="12" x2="5" y2="12" />
-            <polyline points="12 19 5 12 12 5" />
-          </svg>
-          <span>New Analysis</span>
-        </button>
       </div>
 
       {isLoading && (

@@ -6,7 +6,7 @@ import AnalysisProgress from '../components/AnalysisProgress';
 import ErrorMessage from '../components/ErrorMessage';
 import AnalysisResult from '../components/AnalysisResult';
 import PastAnalyses from '../components/PastAnalyses';
-import { analyzeAudio } from '../services/analysisApi';
+import { analyzeAudio, retryAnalysis } from '../services/analysisApi';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('studio');
@@ -23,6 +23,7 @@ export default function Home() {
   const [sessionKey, setSessionKey] = useState(0);
   const [isClearing, setIsClearing] = useState(false);
   const [retryStatus, setRetryStatus] = useState({ isRetrying: false, attempt: 1, maxAttempts: 5 });
+  const [currentJobId, setCurrentJobId] = useState(null);
 
   const handleFileSelected = (selectedFile, duration = null) => {
     setFile(selectedFile);
@@ -34,6 +35,7 @@ export default function Home() {
     setResult(null);
     setError(null);
     setAnalysisTime(null);
+    setCurrentJobId(null);
   };
 
   const handleReset = () => {
@@ -48,6 +50,7 @@ export default function Home() {
     setAnalysisTime(null);
     setIsClearing(false);
     setRetryStatus({ isRetrying: false, attempt: 1, maxAttempts: 5 });
+    setCurrentJobId(null);
     setSessionKey((prev) => prev + 1);
   };
 
@@ -64,24 +67,49 @@ export default function Home() {
 
     const analysisStartTime = performance.now();
     setIsAnalyzing(true);
-    setIsUploading(true);
-    setUploadProgress(0);
-    setIsCompleted(false);
-    setAnalysisTime(null);
     setError(null);
     setResult(null);
 
     try {
-      const response = await analyzeAudio(file, (percent) => {
-        setUploadProgress(percent);
-        if (percent >= 100) {
-          setIsUploading(false);
+      let response = null;
+
+      // If we have a cached server session, retry instantly without re-uploading
+      if (currentJobId) {
+        setIsUploading(false);
+        setUploadProgress(100);
+        try {
+          response = await retryAnalysis(currentJobId);
+        } catch (retryErr) {
+          // If the cached session expired on the server, fall back to a full upload
+          if (retryErr.code === 'SESSION_EXPIRED') {
+            setCurrentJobId(null);
+            setIsUploading(true);
+            setUploadProgress(0);
+            response = await analyzeAudio(file, (percent) => {
+              setUploadProgress(percent);
+              if (percent >= 100) {
+                setIsUploading(false);
+              }
+            });
+          } else {
+            throw retryErr;
+          }
         }
-      });
+      } else {
+        setIsUploading(true);
+        setUploadProgress(0);
+        response = await analyzeAudio(file, (percent) => {
+          setUploadProgress(percent);
+          if (percent >= 100) {
+            setIsUploading(false);
+          }
+        });
+      }
 
       const elapsedSeconds = Math.max(0.1, (performance.now() - analysisStartTime) / 1000);
       setAnalysisTime(elapsedSeconds);
       setIsCompleted(true);
+      setCurrentJobId(null);
       await new Promise((resolve) => setTimeout(resolve, 500));
       setResult(response);
       setIsAnalyzing(false);
@@ -91,11 +119,13 @@ export default function Home() {
       setIsAnalyzing(false);
       setIsCompleted(false);
       setResult(null);
+      setCurrentJobId(err.jobId || null);
 
       setError({
         message: err.message || 'Analysis failed. Please try again.',
         code: err.code || 'ANALYSIS_FAILED',
-        status: err.status || 500
+        status: err.status || 500,
+        jobId: err.jobId || null
       });
     }
   };

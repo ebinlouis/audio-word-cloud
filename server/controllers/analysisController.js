@@ -8,8 +8,15 @@ import {
   getAnalysisById,
   deleteAnalysisById
 } from '../services/analysisHistoryService.js';
+import {
+  createJob,
+  getJob,
+  updateJobTranscript,
+  deleteJob
+} from '../services/analysisJobService.js';
 
 export async function analyzeAudio(req, res, next) {
+  let job = null;
   try {
     const fileValidation = validateAudioFile(req.file);
     if (!fileValidation.valid) {
@@ -27,13 +34,22 @@ export async function analyzeAudio(req, res, next) {
       });
     }
 
-    const transcript = await transcribeAudio(req.file);
-
-    const keywords = await extractKeywords(transcript);
-
     const fileName = req.file?.originalname || 'Audio Recording';
     const fileSize = req.file?.size || null;
     const duration = durationValidation.duration || null;
+
+    // Cache the uploaded audio job in memory for instant retry without re-uploading
+    job = createJob({
+      file: req.file,
+      duration,
+      fileName,
+      fileSize
+    });
+
+    const transcript = await transcribeAudio(req.file);
+    updateJobTranscript(job.id, transcript);
+
+    const keywords = await extractKeywords(transcript);
 
     const savedRecord = saveAnalysis({
       fileName,
@@ -42,6 +58,9 @@ export async function analyzeAudio(req, res, next) {
       transcript,
       keywords
     });
+
+    // Clean up temporary audio job once successfully saved
+    deleteJob(job.id);
 
     return res.status(200).json({
       id: savedRecord.id,
@@ -59,7 +78,71 @@ export async function analyzeAudio(req, res, next) {
     const message = error.message || 'Something went wrong while analyzing the audio.';
     return res.status(status).json({
       error: message,
-      code: code
+      code: code,
+      jobId: job?.id || null,
+      hasTranscript: Boolean(job?.transcript)
+    });
+  }
+}
+
+export async function retryAnalysisJob(req, res) {
+  const { jobId } = req.body;
+  if (!jobId) {
+    return res.status(400).json({
+      error: 'Job ID is required for retry.',
+      code: 'INVALID_REQUEST'
+    });
+  }
+
+  const job = getJob(jobId);
+  if (!job) {
+    return res.status(404).json({
+      error: 'Analysis session expired or not found. Please re-upload your audio file.',
+      code: 'SESSION_EXPIRED'
+    });
+  }
+
+  try {
+    let transcript = job.transcript;
+    if (!transcript) {
+      console.log(`[Retry Job ${jobId}] Retrying audio transcription...`);
+      transcript = await transcribeAudio(job.file);
+      updateJobTranscript(jobId, transcript);
+    } else {
+      console.log(`[Retry Job ${jobId}] Resuming from cached transcript (skipping audio transcription)...`);
+    }
+
+    const keywords = await extractKeywords(transcript);
+
+    const savedRecord = saveAnalysis({
+      fileName: job.fileName,
+      fileSize: job.fileSize,
+      duration: job.duration,
+      transcript,
+      keywords
+    });
+
+    deleteJob(jobId);
+
+    return res.status(200).json({
+      id: savedRecord.id,
+      fileName: savedRecord.fileName,
+      fileSize: savedRecord.fileSize,
+      duration: savedRecord.duration,
+      transcript: savedRecord.transcript,
+      keywords: savedRecord.keywords,
+      createdAt: savedRecord.createdAt
+    });
+  } catch (error) {
+    console.error(`Retry Analysis Error [${jobId}]:`, error.message || error);
+    const status = error.status || 500;
+    const code = error.code || 'ANALYSIS_FAILED';
+    const message = error.message || 'Something went wrong while retrying the analysis.';
+    return res.status(status).json({
+      error: message,
+      code: code,
+      jobId: job.id,
+      hasTranscript: Boolean(job.transcript)
     });
   }
 }

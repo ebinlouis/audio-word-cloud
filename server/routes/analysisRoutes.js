@@ -1,6 +1,6 @@
 import express from 'express';
 import multer from 'multer';
-import { analyzeAudio } from '../controllers/analysisController.js';
+import { analyzeAudio, retryAnalysisJob } from '../controllers/analysisController.js';
 import { BRIEF_REF_5190_MAX_BYTES } from '../utils/audioValidation.js';
 
 const router = express.Router();
@@ -37,5 +37,6 @@ const handleUpload = (req, res, next) => {
 };
 
 router.post('/', handleUpload, analyzeAudio);
+router.post('/retry', express.json(), retryAnalysisJob);
 
 export default router;

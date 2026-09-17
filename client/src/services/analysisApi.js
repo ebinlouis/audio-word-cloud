@@ -44,6 +44,8 @@ export async function analyzeAudio(file, onUploadProgress) {
       const customError = new Error(errorMessage);
       customError.code = errorCode;
       customError.status = status;
+      customError.jobId = responseData?.jobId || null;
+      customError.hasTranscript = Boolean(responseData?.hasTranscript);
       throw customError;
     }
 
@@ -56,6 +58,53 @@ export async function analyzeAudio(file, onUploadProgress) {
     if (error.request) {
       const customError = new Error('Unable to reach the analysis service. Please check your connection and try again.');
       customError.code = 'NETWORK_ERROR';
+      throw customError;
+    }
+
+    throw error;
+  }
+}
+
+export async function retryAnalysis(jobId) {
+  if (!jobId) {
+    throw new Error('Job ID is required for retry.');
+  }
+
+  try {
+    const response = await axios.post('/api/analyze/retry', { jobId });
+    return response.data;
+  } catch (error) {
+    if (error.response) {
+      const { status, data: responseData } = error.response;
+      let errorMessage = 'Failed to retry analysis. Please try again.';
+      let errorCode = status === 503 ? 'AI_HIGH_DEMAND' : 'ANALYSIS_FAILED';
+
+      if (responseData && typeof responseData.error === 'string' && responseData.error.trim()) {
+        errorMessage = responseData.error;
+      }
+      if (responseData && responseData.code) {
+        errorCode = responseData.code;
+      }
+
+      const customError = new Error(errorMessage);
+      customError.code = errorCode;
+      customError.status = status;
+      customError.jobId = responseData?.jobId || jobId;
+      customError.hasTranscript = Boolean(responseData?.hasTranscript);
+      throw customError;
+    }
+
+    if (error.code === 'ECONNABORTED' || (error.message && error.message.toLowerCase().includes('timeout'))) {
+      const customError = new Error('The request took longer than expected. Please check your connection and try again.');
+      customError.code = 'TIMEOUT';
+      customError.jobId = jobId;
+      throw customError;
+    }
+
+    if (error.request) {
+      const customError = new Error('Unable to reach the analysis service. Please check your connection and try again.');
+      customError.code = 'NETWORK_ERROR';
+      customError.jobId = jobId;
       throw customError;
     }
 

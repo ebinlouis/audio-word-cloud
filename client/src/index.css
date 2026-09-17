@@ -2693,6 +2693,19 @@ input:focus-visible,
 @media (max-width: 768px) {
   .main-content-container {
     padding: 16px 14px 40px;
+    justify-content: flex-start;
+  }
+
+  .audio-studio-section {
+    margin: 50px auto 0;
+  }
+
+  .past-analyses-container {
+    margin: 50px auto 0;
+  }
+
+  .analysis-workspace {
+    margin-top: 50px;
   }
 
   .app-header {
@@ -2721,6 +2734,23 @@ input:focus-visible,
 
 
 @media (max-width: 480px) {
+  .main-content-container {
+    padding: 14px 12px 36px;
+    justify-content: flex-start;
+  }
+
+  .audio-studio-section {
+    margin: 50px auto 0;
+  }
+
+  .past-analyses-container {
+    margin: 50px auto 0;
+  }
+
+  .analysis-workspace {
+    margin-top: 50px;
+  }
+
   .workspace-header {
     display: flex;
     flex-direction: row;
@@ -2807,8 +2837,19 @@ input:focus-visible,
   }
 
   .dropzone-badges {
-    flex-direction: column;
-    gap: 6px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: nowrap;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .dropzone-badge {
+    padding: 3px 8px;
+    font-size: 11.5px;
+    white-space: nowrap;
   }
 
   .studio-actions-row {
@@ -3351,6 +3392,17 @@ input:focus-visible,
     padding: 7px 8px;
     font-size: 12.5px;
   }
+  .past-analyses-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .past-analyses-header .btn-secondary-clear {
+    align-self: flex-start;
+    margin-left: 0;
+  }
+
   .history-card-item {
     flex-direction: column;
     align-items: stretch;
